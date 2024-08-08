@@ -6,7 +6,8 @@ export const printReceipt = async (data) => {
     
     try {
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
-        await BluetoothEscposPrinter.printText('EXTRA CASH', { align: 'center' });
+        await BluetoothEscposPrinter.printerUnderLine(0);
+        await BluetoothEscposPrinter.printText('EXTRA CASH', {});
         await BluetoothEscposPrinter.printText('\r\n', {});
         await BluetoothEscposPrinter.printText('LENDING CORPORATION', {});
         await BluetoothEscposPrinter.printText('\r\n', {});
@@ -59,18 +60,15 @@ export const printReceipt = async (data) => {
             ['New Balance', newBalance.toString()],
             {},
         );
-
-        
-        
-        await BluetoothEscposPrinter.printColumn(
-            [48],
-            [BluetoothEscposPrinter.ALIGN.LEFT],
-            ['Signature .....................'],
-            {},
-        );
         await BluetoothEscposPrinter.printText('\r\n', {});
-        await BluetoothEscposPrinter.printText(`Creditors Name ${creditors_name}\n`, {});
         
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
+        await BluetoothEscposPrinter.printerUnderLine(2);
+        await BluetoothEscposPrinter.printText(`_____${creditors_name}_____`, {});
+        await BluetoothEscposPrinter.printerUnderLine(0);
+        await BluetoothEscposPrinter.printText('\r\n', {});
+        await BluetoothEscposPrinter.printText('CONSULTANT NAME', {});
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
         await BluetoothEscposPrinter.printText('\r\n\r\n\r\n', {});
     } catch (e) {
         alert(e.message || 'ERROR');

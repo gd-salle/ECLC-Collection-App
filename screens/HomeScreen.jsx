@@ -10,10 +10,11 @@ import CollectionDateDialog from '../components/CollectionDateDialog';
 import BluetoothConfig from '../components/BluetoothConfig';
 import { handleImport } from '../services/FileService';
 import { getConsultantInfo } from '../services/UserService';
-import { fetchAllPeriods, fetchLatestPeriodDate, fetchLatestPeriodID, fetchAllCollectibles } from '../services/CollectiblesServices';
+import { fetchLatestPeriodDate, fetchLatestPeriodID, fetchAllPeriods} from '../services/CollectiblesServices';
 import { exportCollectibles } from '../services/FileService';
-import { isBluetoothEnabled, getConnectionStatus } from '../services/BluetoothService';
+import { isBluetoothEnabled} from '../services/BluetoothService';
 import { getAdmin, getConsultant } from '../services/UserService';
+import DropDownPicker from 'react-native-dropdown-picker';
 
 const HomeScreen = () => {
   const [consultant, setConsultant] = useState('');
@@ -29,6 +30,8 @@ const HomeScreen = () => {
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [refreshFlag, setRefreshFlag] = useState(false);
   const navigation = useNavigation();
+  const [collectionDates, setCollectionDates] = useState([]);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,6 +76,12 @@ const HomeScreen = () => {
       } else {
         setCollectionDate(''); // Clear the collection date if isExported is 1
       }
+      const periods = await fetchAllPeriods();
+      const dates = periods.map(period => ({
+        label: period.date,
+        value: period.date
+      }));
+      setCollectionDates(dates);
     } catch (error) {
       console.error('Failed to fetch latest period date:', error);
     }
@@ -228,12 +237,14 @@ const handleDialogConfirm = async (username, password) => {
         editable={false}
         style={styles.input}
       />
-      <TextInput
-        label="Date of Collection"
+      <DropDownPicker
+        open={open}
         value={collectionDate}
-        onChangeText={setCollectionDate}
-        mode="outlined"
-        editable={false}
+        items={collectionDates}
+        setOpen={setOpen}
+        setValue={setCollectionDate}
+        setItems={setCollectionDates}
+        // placeholder="Select Date of Collection"
         style={styles.input}
       />
       <Button
@@ -306,9 +317,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   logo: {
-    width: 100,
+    width: '100%',
     height: 100,
     marginBottom: 20,
+    objectFit: 'contain'
   },
   title: {
     fontSize: 24,
@@ -319,6 +331,7 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     marginBottom: 15,
+    zIndex: 0,
   },
   startButton: {
     width: '100%',

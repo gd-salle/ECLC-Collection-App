@@ -145,8 +145,8 @@ export const exportCollectibles = async (periodId) => {
     }
 
     await markPeriodAsExported(db, periodId);
-    await deleteCollectiblesData(db, periodId);
-    await deletePeriodData(db, periodId);
+    // await deleteCollectiblesData(db, periodId);
+    // await deletePeriodData(db, periodId);
     return 'success';
   } catch (error) {
     console.error('Error exporting collectibles:', error);
@@ -167,7 +167,7 @@ const checkUnprintedCollectibles = async (db, periodId) => {
   `, [periodId]);
 
   if (unprintedCollectibles.length > 0) {
-    console.log('Not all collectibles are printed. Export aborted.');
+    // console.log('Not all collectibles are printed. Export aborted.');
     Alert.alert('Export Aborted', 'Not all collectibles are printed. Please ensure all collectibles are printed before exporting.');
     return 'unprinted_collectibles';
   }

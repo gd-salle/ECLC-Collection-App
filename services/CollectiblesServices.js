@@ -219,3 +219,18 @@ export const updateCollectible = async ({
     throw error;
   }
 };
+
+export const updateAll = async () => {
+  try {
+    const db = await openDatabase();
+
+    await db.runAsync(`
+      UPDATE collectibles
+      SET
+        is_printed = 1
+      WHERE is_printed = 0
+      `);
+  } catch (e) {
+    console.error('Error updating collectible:', e);
+  }
+}

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Appbar, Card, Paragraph, Text, Searchbar } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Appbar, Card, Paragraph, Text, Searchbar, Button } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { fetchCollectibles } from '../services/CollectiblesServices';
+import { fetchCollectibles, updateAll } from '../services/CollectiblesServices';
 
 const Collectibles = () => {
   const navigation = useNavigation();
@@ -38,6 +38,11 @@ const Collectibles = () => {
     setFilteredData(filteredItems);
   };
 
+  const handleUpdatePress = async () => {
+    // Implement update functionality here
+    await updateAll();
+  };
+
   return (
     <View style={styles.container}>
       <Appbar.Header>
@@ -51,6 +56,9 @@ const Collectibles = () => {
           value={searchQuery}
           style={styles.searchBar}
         />
+        <Button mode="contained" onPress={handleUpdatePress} style={styles.updateButton}>
+          Update
+        </Button>
         <ScrollView>
           {(searchQuery !== '' ? filteredData : data).map((item, index) => (
             <TouchableOpacity key={index} onPress={() => handleCardPress(item)}>
@@ -139,6 +147,9 @@ const styles = StyleSheet.create({
   searchBar: {
     marginBottom: 10,
     borderRadius: 10,
+  },
+    updateButton: {
+    marginBottom: 10,
   },
 });
 
