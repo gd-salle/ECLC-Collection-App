@@ -5,7 +5,7 @@ const databaseName = 'eclcDB.db';
 export const openDatabase = async () => {
   try {
     const db = await SQLite.openDatabaseAsync(databaseName, { useNewConnection: true });
-    console.log('Database opened successfully');
+    // console.log('Database opened successfully');
 
     const tablesCheck = await db.getAllAsync(`
       SELECT name FROM sqlite_master WHERE type='table' AND name IN (
@@ -41,7 +41,7 @@ export const openDatabase = async () => {
       );
 
       CREATE TABLE IF NOT EXISTS collectibles (
-        account_number INTEGER PRIMARY KEY NOT NULL,
+        account_number INTEGER NOT NULL,
         name TEXT NOT NULL,
         remaining_balance REAL NOT NULL,
         due_date TEXT NOT NULL,

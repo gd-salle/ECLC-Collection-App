@@ -1,18 +1,34 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Appbar, Card, Paragraph, Text, Searchbar } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Appbar, Card, Paragraph, Text, Searchbar, Button } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { fetchCollectibles } from '../services/CollectiblesServices';
+import { fetchCollectibles, fetchAllCollectibles, fetchPeriodDateById, updateAll } from '../services/CollectiblesServices';
 
-const Collectibles = () => {
+const Collectibles = ({ route }) => {
   const navigation = useNavigation();
+  const { periodId } = route.params;
   const [data, setData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredData, setFilteredData] = useState([]);
 
   const getData = async () => {
     try {
-      const collectibles = await fetchCollectibles();
+      const periodDate = await fetchPeriodDateById(periodId);
+
+      // Get the current date in GMT+8 timezone
+      const offset = 8 * 60; // GMT+8 offset in minutes
+      const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+        .toISOString()
+        .split('T')[0]; // Format to 'YYYY-MM-DD'
+
+      let collectibles;
+
+      if (currentDate === periodDate) {
+        collectibles = await fetchCollectibles(periodId);
+      } else {
+        collectibles = await fetchAllCollectibles(periodId);
+      }
+
       setData(collectibles);
       setFilteredData(collectibles);
     } catch (error) {
@@ -23,11 +39,11 @@ const Collectibles = () => {
   useFocusEffect(
     useCallback(() => {
       getData();
-    }, [])
+    }, [periodId])
   );
 
   const handleCardPress = (item) => {
-    navigation.navigate('DataEntry', { item }); // Pass the selected item
+    navigation.navigate('DataEntry', { item });
   };
 
   const handleSearch = (query) => {
@@ -36,6 +52,11 @@ const Collectibles = () => {
       item.name.toLowerCase().includes(query.toLowerCase())
     );
     setFilteredData(filteredItems);
+  };
+
+  const handleUpdatePress = async () => {
+    getData();
+    await updateAll();
   };
 
   return (
@@ -51,7 +72,7 @@ const Collectibles = () => {
           value={searchQuery}
           style={styles.searchBar}
         />
-        <ScrollView>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
           {(searchQuery !== '' ? filteredData : data).map((item, index) => (
             <TouchableOpacity key={index} onPress={() => handleCardPress(item)}>
               <Card style={styles.card}>
@@ -85,6 +106,11 @@ const Collectibles = () => {
           ))}
         </ScrollView>
       </View>
+      <View style={styles.buttonContainer}>
+        <Button mode="contained" onPress={handleUpdatePress} style={styles.updateButton}>
+          Update
+        </Button>
+      </View>
     </View>
   );
 };
@@ -102,7 +128,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f4f8',
   },
   content: {
+    flex: 1,
     padding: 16,
+  },
+  scrollContainer: {
+    flexGrow: 1,
   },
   card: {
     marginBottom: 16,
@@ -138,6 +168,12 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     marginBottom: 10,
+    borderRadius: 10,
+  },
+  buttonContainer: {
+    padding: 16,
+  },
+  updateButton: {
     borderRadius: 10,
   },
 });
