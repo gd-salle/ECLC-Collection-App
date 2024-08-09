@@ -1,36 +1,66 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Modal, Platform } from 'react-native';
-import { TextInput, Button, IconButton } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Alert,
+} from 'react-native';
+import { TextInput, Button, HelperText } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchLatestPeriodID } from '../services/CollectiblesServices';
 
-const CollectionDateDialog = ({ visible, onClose, onConfirm }) => {
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+const AuthDialog = ({ visible, onClose, onConfirm, isConsultantAuth }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
-  const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  useEffect(() => {
+    if (!visible) {
+      setUsername('');
+      setPassword('');
+      setUsernameError('');
+      setPasswordError('');
+    }
+  }, [visible]);
 
-  const onChangeDate = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
-    setShowDatePicker(Platform.OS === 'ios');
-    setDate(currentDate);
+  const validateFields = () => {
+    let isValid = true;
+
+    if (username.trim().length === 0) {
+      setUsernameError('Username is required');
+      isValid = false;
+    } else {
+      setUsernameError('');
+    }
+
+    if (password.trim().length === 0) {
+      setPasswordError('Password is required');
+      isValid = false;
+    } else {
+      setPasswordError('');
+    }
+
+    return isValid;
   };
 
   const handleConfirm = async () => {
-    const formattedDate = formatDate(date);
-    try {
-      onConfirm(formattedDate);
-      onClose();
-      const periodData = await fetchLatestPeriodID();
-      console.log('Period data:', periodData);
-    } catch (error) {
-      console.error('Failed to store collection date:', error);
+    if (!validateFields()) {
+      return;
     }
+
+    try {
+      await onConfirm(username, password); // Call the onConfirm prop with username and password
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred during authentication.');
+    }
+  };
+
+  const handleClose = () => {
+    setUsername('');
+    setPassword('');
+    onClose();
   };
 
   return (
@@ -39,36 +69,34 @@ const CollectionDateDialog = ({ visible, onClose, onConfirm }) => {
         <View style={styles.dialog}>
           <View style={styles.titleContainer}>
             <View style={styles.verticalLine} />
-            <Text style={styles.title}>Date of Collection</Text>
+            <Text style={styles.title}>
+              {isConsultantAuth
+                ? 'This action requires a Consultant Authentication'
+                : 'This action requires an Admin Authentication'}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color="black" />
           </TouchableOpacity>
-          <View style={styles.dateInputContainer}>
-            <TextInput
-              mode="outlined"
-              label="Date"
-              value={formatDate(date)}
-              style={[styles.input, { flex: 1 }]}
-              editable={false}
-            />
-            {/* <IconButton
-              icon="calendar"
-              size={24}
-              onPress={() => setShowDatePicker(true)}
-            /> */}
-          </View>
-
-          {/* {showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display="default"
-              onChange={onChangeDate}
-              minimumDate={new Date()}
-            />
-          )} */}
-
+          {usernameError ? <HelperText type="error">{usernameError}</HelperText> : null}
+          <TextInput
+            label="Username"
+            value={username}
+            onChangeText={setUsername}
+            mode="outlined"
+            style={styles.input}
+            error={!!usernameError}
+          />
+          {passwordError ? <HelperText type="error">{passwordError}</HelperText> : null}
+          <TextInput
+            label="Password"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            mode="outlined"
+            style={styles.input}
+            error={!!passwordError}
+          />
           <Button
             mode="contained"
             onPress={handleConfirm}
@@ -110,9 +138,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#0A154D',
+    flexShrink: 1,
   },
   closeButton: {
     position: 'absolute',
@@ -121,20 +150,17 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   button: {
     width: '100%',
     backgroundColor: '#0A154D',
     borderRadius: 5,
+    marginBottom: 10,
   },
   buttonText: {
     color: '#FFF',
   },
-  dateInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
 });
 
-export default CollectionDateDialog;
+export default AuthDialog;

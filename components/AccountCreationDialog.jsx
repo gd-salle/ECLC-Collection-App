@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { TextInput, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { addConsultant, getAdmin} from '../services/UserService';
+import { addConsultant, getAdmin } from '../services/UserService';
 
 const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
   const [consultantName, setConsultantName] = useState('');
@@ -24,6 +24,31 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
   const [confirmPasswordInputError, setConfirmPasswordInputError] = useState('');
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [loading, setLoading] = useState(true); // New loading state
+
+  useEffect(() => {
+    if (visible) {
+      // Fetch admin credentials when modal becomes visible
+      const fetchAdminCredentials = async () => {
+        try {
+          const adminCredentials = await getAdmin('admin', 'admin');
+          if (adminCredentials) {
+            setAdminUsername(adminCredentials.username);
+            setAdminPassword(adminCredentials.password);
+          } else {
+            setAdminPasscodeError('Admin not found');
+          }
+        } catch (error) {
+          console.error('Error fetching admin credentials:', error);
+          setAdminPasscodeError('Error fetching admin credentials');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchAdminCredentials();
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -44,6 +69,8 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
   }, [visible]);
 
   const handleConfirm = async () => {
+    if (loading) return; // Prevent submission while loading
+
     let isValid = true;
 
     if (!consultantName) {
@@ -85,26 +112,14 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
 
     if (isValid) {
       try {
-        // Fetch admin credentials
-        const adminCredentials = await getAdmin('admin', admin_passcode);
-
-        if (adminCredentials) {
-          // Store username and password in state variables
-          setAdminUsername(adminCredentials.username);
-          setAdminPassword(adminCredentials.password);
-
-          if (adminPassword === admin_passcode) {
-            // Admin passcode is valid, proceed with adding the consultant
-            await addConsultant(consultantName, admin_passcode, password, area);
-            onConfirm(consultantName, admin_passcode, password, area);
-            onClose();
-          } else {
-            // Admin passcode is invalid
-            setAdminPasscodeError('Invalid admin passcode');
-          }
+        if (adminPassword === admin_passcode) {
+          // Admin passcode is valid, proceed with adding the consultant
+          await addConsultant(consultantName, admin_passcode, password, area);
+          onConfirm(consultantName, admin_passcode, password, area);
+          onClose();
         } else {
-          // Handle case where no admin credentials are found
-          setAdminPasscodeError('Admin not found');
+          // Admin passcode is invalid
+          setAdminPasscodeError('Invalid admin passcode');
         }
       } catch (error) {
         console.error('Error adding consultant:', error);
@@ -192,6 +207,7 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
             onPress={handleConfirm}
             style={styles.button}
             labelStyle={styles.buttonText}
+            disabled={loading} // Disable button while loading
           >
             CONFIRM
           </Button>

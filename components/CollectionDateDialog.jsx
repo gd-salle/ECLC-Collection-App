@@ -47,20 +47,20 @@ const CollectionDateDialog = ({ visible, onClose, onConfirm }) => {
           </TouchableOpacity>
           <View style={styles.dateInputContainer}>
             <TextInput
-              mode="flat"
+              mode="outlined"
               label="Date"
               value={formatDate(date)}
               style={[styles.input, { flex: 1 }]}
               editable={false}
             />
-            <IconButton
+            {/* <IconButton
               icon="calendar"
               size={24}
               onPress={() => setShowDatePicker(true)}
-            />
+            /> */}
           </View>
 
-          {showDatePicker && (
+          {/* {showDatePicker && (
             <DateTimePicker
               value={date}
               mode="date"
@@ -68,7 +68,7 @@ const CollectionDateDialog = ({ visible, onClose, onConfirm }) => {
               onChange={onChangeDate}
               minimumDate={new Date()}
             />
-          )}
+          )} */}
 
           <Button
             mode="contained"
