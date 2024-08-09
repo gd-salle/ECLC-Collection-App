@@ -1,9 +1,12 @@
 import { openDatabase } from './Database';
 
-export const fetchCollectibles = async () => {
+export const fetchCollectibles = async (period_id) => {
     try {
         const db = await openDatabase();
-        const allRows = await db.getAllAsync('SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE c.is_printed = 0 AND p.isExported = 0');
+        const allRows = await db.getAllAsync(
+            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE c.is_printed = 0 AND p.isExported = 0 AND c.period_id = ?', 
+            [period_id] // Pass period_id as a parameter
+        );
 
         // Map the rows from the database to your Collectibles object
         const collectibles = allRows.map(row => ({
@@ -28,10 +31,42 @@ export const fetchCollectibles = async () => {
     }
 };
 
+export const fetchAllCollectiblesByPeriodDate = async (period_date) => {
+    try {
+        const db = await openDatabase();
+        const allRows = await db.getAllAsync(
+            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE p.date = ?', 
+            [period_date] // Pass period_id as a parameter
+        );
+
+        // Map the rows from the database to your Collectibles object
+        const collectibles = allRows.map(row => ({
+            account_number: row.account_number,
+            name: row.name,
+            remaining_balance: row.remaining_balance,
+            due_date: row.due_date,
+            payment_type: row.payment_type,
+            cheque_number: row.cheque_number,
+            amount_paid: row.amount_paid,
+            daily_due: row.daily_due,
+            creditors_name: row.creditors_name,
+            is_printed: row.is_printed,
+            period_id: row.period_id,
+        }));
+
+        return collectibles;
+
+    } catch (error) {
+        console.error('Error fetching collectibles:', error);
+        throw error;
+    }
+};
 export const fetchAllCollectibles = async () => {
     try {
         const db = await openDatabase();
-        const allRows = await db.getAllAsync('SELECT * FROM collectibles');
+        const allRows = await db.getAllAsync(
+            'SELECT * FROM collectibles'
+        );
 
         // Map the rows from the database to your Collectibles object
         const collectibles = allRows.map(row => ({
@@ -139,6 +174,21 @@ export const fetchPeriodDateById = async (periodId) => {
   }
 };
 
+export const fetchPeriodIdByDate = async (date) => {
+    try {
+        const db = await openDatabase();
+        const result = await db.getFirstAsync(
+            'SELECT period_id FROM period WHERE date = ?',
+            [date]
+        );
+        return result ? result.period_id : null;
+    } catch (error) {
+        console.error('Error fetching period ID by date:', error);
+        throw error;
+    }
+};
+
+
 export const numberToWords = (num) => {
   const a = [
     '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
@@ -219,7 +269,6 @@ export const updateCollectible = async ({
     throw error;
   }
 };
-
 export const updateAll = async () => {
   try {
     const db = await openDatabase();
@@ -228,6 +277,7 @@ export const updateAll = async () => {
       UPDATE collectibles
       SET
         is_printed = 1
+
       WHERE is_printed = 0
       `);
   } catch (e) {
