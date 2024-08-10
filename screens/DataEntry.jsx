@@ -4,7 +4,7 @@ import { Appbar, Card, Text, TextInput, Checkbox, Button, Divider } from 'react-
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import WarningConfirmationDialog from '../components/WarningConfimationDialog';
-import { fetchPeriodDateById, numberToWords, updateCollectible} from '../services/CollectiblesServices';
+import { fetchPeriodDateById, numberToWords, updateCollectible } from '../services/CollectiblesServices';
 import { printReceipt } from '../services/PrintService';
 import { getConnectionStatus } from '../services/BluetoothService';
 import BluetoothConfig from '../components/BluetoothConfig';
@@ -14,12 +14,12 @@ const DataEntry = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { item } = route.params; // Access the passed data
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(item.is_printed ? item.payment_type : '');
-  const [isChequeNumberVisible, setChequeNumberVisible] = useState(item.is_printed && item.payment_type === 'Cheque');
-  const [chequeNumber, setChequeNumber] = useState(item.is_printed ? item.cheque_number : '');
-  const [amountPaid, setAmountPaid] = useState(item.is_printed ? item.amount_paid : '');
-  const [sumOf, setSumOf] = useState(item.is_printed ? numberToWords(parseFloat(item.amount_paid)) : '');
-  const [creditorsName, setCreditorsName] = useState(item.is_printed ? item.creditors_name : '');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(item.payment_type || '');
+  const [isChequeNumberVisible, setChequeNumberVisible] = useState(item.payment_type === 'Cheque');
+  const [chequeNumber, setChequeNumber] = useState(item.cheque_number || '');
+  const [amountPaid, setAmountPaid] = useState(item.amount_paid || '');
+  const [sumOf, setSumOf] = useState(item.amount_paid ? numberToWords(parseFloat(item.amount_paid)) : '');
+  const [creditorsName, setCreditorsName] = useState('');
   const [confirmationDialogVisible, setConfirmationDialogVisible] = useState(false);
   const [warningDialogVisible, setWarningDialogVisible] = useState(false);
   const [periodDate, setPeriodDate] = useState(null);
@@ -27,6 +27,24 @@ const DataEntry = () => {
   const [confirmData, setConfirmData] = useState({});
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [consultantName, setConsultantName] = useState('');
+  
+  // Get the current date
+  const getCurrentDate = () => {
+    const now = new Date();
+    // Convert to GMT+8
+    const offset = 8 * 60; // GMT+8 in minutes
+    const gmt8Time = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + offset * 60000);
+    return gmt8Time.toISOString().split('T')[0]; // Format YYYY-MM-DD
+  };
+
+  // Check if periodDate matches the current date
+  const isPrintDisabled = periodDate !== getCurrentDate();
+
+  // Determine if the checkboxes should be disabled based on the payment_type
+  const isCheckboxDisabled = item.payment_type === 'Cash' || item.payment_type === 'Cheque';
+
+  // Determine if the Cheque Number field should be disabled based on its length
+  const isChequeNumberDisabled = chequeNumber.length > 3;
 
   useEffect(() => {
     const fetchConsultantInfo = async () => {
@@ -52,10 +70,19 @@ const DataEntry = () => {
     fetchPeriodDate();
   }, [item.period_id]);
 
+  useEffect(() => {
+    if (item.amount_paid) {
+      setAmountPaid(item.amount_paid.toString());
+      setSumOf(numberToWords(parseFloat(item.amount_paid)));
+    }
+  }, [item.amount_paid]);
+
   const handleCheckboxChange = (method) => {
-    setSelectedPaymentMethod(method);
-    setChequeNumberVisible(method === 'Cheque');
-    setErrors(prevErrors => ({ ...prevErrors, selectedPaymentMethod: '' }));
+    if (!isCheckboxDisabled) {
+      setSelectedPaymentMethod(method);
+      setChequeNumberVisible(method === 'Cheque');
+      setErrors(prevErrors => ({ ...prevErrors, selectedPaymentMethod: '' }));
+    }
   };
 
   const validateForm = () => {
@@ -103,25 +130,23 @@ const DataEntry = () => {
     setConfirmationDialogVisible(false);
     setWarningDialogVisible(true);
   };
-  
+
   const bluetoothStatus = getConnectionStatus();
 
   const handleWarningConfirm = async () => {
     setWarningDialogVisible(false);
     try {
       if (bluetoothStatus) {
-        console.log(bluetoothStatus);
         navigation.navigate('Collectibles');
         handlePrintReceipt();
         await updateCollectible(confirmData);
         Alert.alert('Success', 'Printed successfully.');
       } else {
         Alert.alert('Please connect to Bluetooth Printer', 'No bluetooth printer connected.');
-        setBluetoothConfigVisible(true);
+        setBluetoothConfigVisible(true);  
       }
     } catch (error) {
       Alert.alert('Error', 'No bluetooth printer connected.');
-      // console.error('Failed to print:', error);
     }
   };
 
@@ -153,8 +178,6 @@ const DataEntry = () => {
       console.error('Error printing receipt:', error);
     }
   };
-  
-  const isEditable = item.is_printed !== 1; // Determine if fields should be editable
 
   return (
     <View style={{ flex: 1 }}>
@@ -195,13 +218,13 @@ const DataEntry = () => {
           <Checkbox
             status={selectedPaymentMethod === 'Cash' ? 'checked' : 'unchecked'}
             onPress={() => handleCheckboxChange('Cash')}
-            disabled={!isEditable}
+            disabled={isCheckboxDisabled}
           />
           <Text style={styles.checkboxLabel}>Cash</Text>
           <Checkbox
             status={selectedPaymentMethod === 'Cheque' ? 'checked' : 'unchecked'}
             onPress={() => handleCheckboxChange('Cheque')}
-            disabled={!isEditable}
+            disabled={isCheckboxDisabled}
           />
           <Text style={styles.checkboxLabel}>Cheque</Text>
         </View>
@@ -218,7 +241,7 @@ const DataEntry = () => {
             onChangeText={setChequeNumber}
             error={!!errors.chequeNumber}
             keyboardType="numeric"
-            editable={isEditable}
+            disabled={isChequeNumberDisabled}
           />
         )}
         {errors.chequeNumber ? (
@@ -243,7 +266,7 @@ const DataEntry = () => {
           onChangeText={handleAmountPaidChange}
           error={!!errors.amountPaid}
           keyboardType="numeric"
-          editable={isEditable}
+          editable={!item.amount_paid}  // Only editable if item.amount_paid is not set
         />
         {errors.amountPaid ? (
           <Text style={styles.errorText}>{errors.amountPaid}</Text>
@@ -254,9 +277,7 @@ const DataEntry = () => {
           label="The Sum of"
           style={styles.input}
           value={sumOf}
-          onChangeText={setSumOf}
           editable={false}
-          error={!!errors.sumOf}
         />
         {errors.sumOf ? (
           <Text style={styles.errorText}>{errors.sumOf}</Text>
@@ -287,11 +308,11 @@ const DataEntry = () => {
         />
       </ScrollView>
 
-      <Button 
-        mode="contained" 
-        style={styles.button} 
+      <Button
+        mode="contained"
+        style={styles.button}
         onPress={handleOpenDialog}
-        disabled={!isEditable} // Disable the button if not editable
+        disabled={isPrintDisabled}
       >
         PRINT RECEIPT
       </Button>

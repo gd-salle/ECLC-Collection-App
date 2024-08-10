@@ -69,7 +69,12 @@ export const printReceipt = async (data) => {
         await BluetoothEscposPrinter.printText('\r\n', {});
         await BluetoothEscposPrinter.printText('CONSULTANT NAME', {});
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
-        await BluetoothEscposPrinter.printText('\r\n\r\n\r\n', {});
+        await BluetoothEscposPrinter.printText('\r\n\n', {});
+
+        const now = new Date();
+        const currentDate = now.toISOString().split('T')[0];
+        await BluetoothEscposPrinter.printText(`Date Printed  ${currentDate}`, {});
+        await BluetoothEscposPrinter.printText('\r\n', {});
     } catch (e) {
         alert(e.message || 'ERROR');
     }

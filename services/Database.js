@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-const databaseName = 'eclcDB.db';
+const databaseName = 'eclcDB1.db';
 
 export const openDatabase = async () => {
   try {

@@ -54,11 +54,6 @@ const Collectibles = ({ route }) => {
     setFilteredData(filteredItems);
   };
 
-  const handleUpdatePress = async () => {
-    getData();
-    await updateAll();
-  };
-
   return (
     <View style={styles.container}>
       <Appbar.Header>
@@ -105,11 +100,6 @@ const Collectibles = ({ route }) => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
-      <View style={styles.buttonContainer}>
-        <Button mode="contained" onPress={handleUpdatePress} style={styles.updateButton}>
-          Update
-        </Button>
       </View>
     </View>
   );
