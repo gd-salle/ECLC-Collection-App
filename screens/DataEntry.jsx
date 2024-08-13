@@ -19,7 +19,7 @@ const DataEntry = () => {
   const [chequeNumber, setChequeNumber] = useState(item.cheque_number || '');
   const [amountPaid, setAmountPaid] = useState(item.amount_paid || '');
   const [sumOf, setSumOf] = useState(item.amount_paid ? numberToWords(parseFloat(item.amount_paid)) : '');
-  const [creditorsName, setCreditorsName] = useState('');
+  // const [creditorsName, setCreditorsName] = useState('');
   const [confirmationDialogVisible, setConfirmationDialogVisible] = useState(false);
   const [warningDialogVisible, setWarningDialogVisible] = useState(false);
   const [periodDate, setPeriodDate] = useState(null);
@@ -44,8 +44,9 @@ const DataEntry = () => {
   const isCheckboxDisabled = item.payment_type === 'Cash' || item.payment_type === 'Cheque';
 
   // Determine if the Cheque Number field should be disabled based on its length
-  const isChequeNumberDisabled = chequeNumber.length > 3;
+  const isChequeNumberDisabled = isPrintDisabled;
 
+  console.log('ChequeDisabled? :', isCheckboxDisabled)
   useEffect(() => {
     const fetchConsultantInfo = async () => {
       try {
@@ -89,7 +90,7 @@ const DataEntry = () => {
     let valid = true;
     let newErrors = {};
 
-    if (!selectedPaymentMethod) {
+    if (selectedPaymentMethod !== 'Cash' && selectedPaymentMethod !== 'Cheque') {
       newErrors.selectedPaymentMethod = 'Please select a payment method.';
       valid = false;
     }
@@ -118,7 +119,7 @@ const DataEntry = () => {
         payment_type: selectedPaymentMethod,
         cheque_number: chequeNumber,
         amount_paid: amountPaid,
-        creditors_name: creditorsName,
+        creditors_name: consultantName,
       });
       setConfirmationDialogVisible(true);
     } else {
@@ -137,9 +138,10 @@ const DataEntry = () => {
     setWarningDialogVisible(false);
     try {
       if (bluetoothStatus) {
-        navigation.navigate('Collectibles');
+        navigation.navigate('Collectibles', { periodId: item.period_id });
         handlePrintReceipt();
         await updateCollectible(confirmData);
+        console.log(confirmData)
         Alert.alert('Success', 'Printed successfully.');
       } else {
         Alert.alert('Please connect to Bluetooth Printer', 'No bluetooth printer connected.');
@@ -172,13 +174,14 @@ const DataEntry = () => {
       creditors_name: consultantName,
     };
 
+    console.log(dataToPrint)
     try {
       await printReceipt(dataToPrint);
     } catch (error) {
       console.error('Error printing receipt:', error);
     }
   };
-
+console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Cheque')
   return (
     <View style={{ flex: 1 }}>
       <Appbar.Header>
@@ -219,6 +222,7 @@ const DataEntry = () => {
             status={selectedPaymentMethod === 'Cash' ? 'checked' : 'unchecked'}
             onPress={() => handleCheckboxChange('Cash')}
             disabled={isCheckboxDisabled}
+            
           />
           <Text style={styles.checkboxLabel}>Cash</Text>
           <Checkbox
