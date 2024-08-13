@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Appbar, Card, Paragraph, Text, Searchbar, Button } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { fetchCollectibles, fetchAllCollectibles, fetchPeriodDateById, updateAll } from '../services/CollectiblesServices';
+import { fetchCollectibles, fetchAllCollectibles, fetchPeriodDateById, updateAll, fetchAllCollectiblesByPeriodDate } from '../services/CollectiblesServices';
 
 const Collectibles = ({ route }) => {
   const navigation = useNavigation();
@@ -27,10 +27,10 @@ const getData = async () => {
     
     if (currentDate === periodDate) {
       console.log('1 this line was runned');
-      collectibles = await fetchCollectibles(periodId);
+      collectibles = await fetchCollectibles(periodDate);
     } else {
       console.log('2 this line was runned');
-      collectibles = await fetchAllCollectibles(periodId);
+      collectibles = await fetchAllCollectiblesByPeriodDate(periodDate);
     }
 
     setData(collectibles);

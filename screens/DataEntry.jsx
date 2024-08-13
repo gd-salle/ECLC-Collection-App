@@ -153,14 +153,22 @@ const DataEntry = () => {
   };
 
   const handleAmountPaidChange = (value) => {
-    setAmountPaid(value);
-    const numericValue = parseFloat(value);
-    if (!isNaN(numericValue)) {
-      setSumOf(numberToWords(numericValue));
-    } else {
-      setSumOf('');
-    }
+      const numericValue = parseFloat(value);
+
+      if (numericValue > parseFloat(item.remaining_balance)) {
+          Alert.alert('Error', 'The amount paid exceeds the remaining balance.');
+          return;
+      }
+
+      setAmountPaid(value);
+
+      if (!isNaN(numericValue)) {
+          setSumOf(numberToWords(numericValue));
+      } else {
+          setSumOf('');
+      }
   };
+
 
   const handlePrintReceipt = async () => {
     const dataToPrint = {

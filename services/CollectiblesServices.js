@@ -1,12 +1,12 @@
 import { openDatabase } from './Database';
 
-export const fetchCollectibles = async (period_id) => {
-    console.log(period_id)
+export const fetchCollectibles = async (period_date) => {
+    console.log(period_date)
     try {
         const db = await openDatabase();
         const allRows = await db.getAllAsync(
-            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE c.is_printed = 0 AND p.isExported = 0 AND c.period_id = ?', 
-            [period_id] // Pass period_id as a parameter
+            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE c.is_printed = 0 AND p.isExported = 0 AND p.date = ?', 
+            [period_date] // Pass period_id as a parameter
         );
 
         // Map the rows from the database to your Collectibles object
