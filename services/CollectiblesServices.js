@@ -1,6 +1,7 @@
 import { openDatabase } from './Database';
 
 export const fetchCollectibles = async (period_id) => {
+    console.log(period_id)
     try {
         const db = await openDatabase();
         const allRows = await db.getAllAsync(
@@ -61,11 +62,11 @@ export const fetchAllCollectiblesByPeriodDate = async (period_date) => {
         throw error;
     }
 };
-export const fetchAllCollectibles = async () => {
+export const fetchAllCollectibles = async (period_id) => {
     try {
         const db = await openDatabase();
         const allRows = await db.getAllAsync(
-            'SELECT * FROM collectibles'
+            'SELECT * FROM collectibles WHERE period_id = ?', [period_id]
         );
 
         // Map the rows from the database to your Collectibles object
@@ -121,7 +122,7 @@ export const fetchAllPeriods = async () => {
   try {
     const db = await openDatabase();
     const result = await db.getAllAsync(`
-      SELECT * FROM period
+      SELECT * FROM period WHERE isExported = 0
     `);
     return result;
   } catch (error) {
@@ -269,7 +270,7 @@ export const updateCollectible = async ({
     throw error;
   }
 };
-export const updateAll = async () => {
+export const updateAll = async (periodId) => {
   try {
     const db = await openDatabase();
 
@@ -278,8 +279,10 @@ export const updateAll = async () => {
       SET
         is_printed = 1
 
-      WHERE is_printed = 0
-      `);
+      WHERE is_printed = 0 AND period_id = ?
+      `, [periodId]);
+    
+    console.log('Button Run')
   } catch (e) {
     console.error('Error updating collectible:', e);
   }

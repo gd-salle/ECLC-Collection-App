@@ -11,30 +11,35 @@ const Collectibles = ({ route }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredData, setFilteredData] = useState([]);
 
-  const getData = async () => {
-    try {
-      const periodDate = await fetchPeriodDateById(periodId);
+const getData = async () => {
+  try {
+    const periodDate = await fetchPeriodDateById(periodId);
 
-      // Get the current date in GMT+8 timezone
-      const offset = 8 * 60; // GMT+8 offset in minutes
-      const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
-        .toISOString()
-        .split('T')[0]; // Format to 'YYYY-MM-DD'
-
-      let collectibles;
-
-      if (currentDate === periodDate) {
-        collectibles = await fetchCollectibles(periodId);
-      } else {
-        collectibles = await fetchAllCollectibles(periodId);
-      }
-
-      setData(collectibles);
-      setFilteredData(collectibles);
-    } catch (error) {
-      console.error('Error fetching collectibles:', error);
+    // Get the current date in GMT+8 timezone
+    const offset = 8 * 60; // GMT+8 offset in minutes
+    const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+      .toISOString()
+      .split('T')[0]; // Format to 'YYYY-MM-DD'
+    let collectibles;
+    console.log('Period: ', periodId);
+    console.log('CurrentDate:', currentDate);
+    console.log('PeriodDate:', periodDate);
+    
+    if (currentDate === periodDate) {
+      console.log('1 this line was runned');
+      collectibles = await fetchCollectibles(periodId);
+    } else {
+      console.log('2 this line was runned');
+      collectibles = await fetchAllCollectibles(periodId);
     }
-  };
+
+    setData(collectibles);
+    setFilteredData(collectibles);
+  } catch (error) {
+    console.error('Error fetching collectibles:', error);
+  }
+};
+
 
   useFocusEffect(
     useCallback(() => {
@@ -54,11 +59,10 @@ const Collectibles = ({ route }) => {
     setFilteredData(filteredItems);
   };
 
-  const handleUpdatePress = async () => {
-    getData();
-    await updateAll();
-  };
-
+  const handleUpdatePress = async (periodId) => {
+    await updateAll(periodId);
+  }
+  
   return (
     <View style={styles.container}>
       <Appbar.Header>
@@ -105,11 +109,6 @@ const Collectibles = ({ route }) => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
-      <View style={styles.buttonContainer}>
-        <Button mode="contained" onPress={handleUpdatePress} style={styles.updateButton}>
-          Update
-        </Button>
       </View>
     </View>
   );

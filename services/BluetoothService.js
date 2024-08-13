@@ -9,47 +9,67 @@ import {
 } from "react-native";
 import { PERMISSIONS, requestMultiple, RESULTS } from "react-native-permissions";
 
+// Keep track of the Bluetooth connection status
 let isBluetootDeviceConnected = false;
 
-// Method to check if a Bluetooth device is connected
+// Method to set the Bluetooth connection status
 export const setConnectionStatus = (status) => {
   isBluetootDeviceConnected = status;
 };
 
+// Method to get the Bluetooth connection status
 export const getConnectionStatus = () => {
   return isBluetootDeviceConnected;
 };
 
-// Method to check if Bluetooth is enabled
+// Extracted function to request Bluetooth permissions
+const requestBluetoothPermissions = async () => {
+  const permissions = [
+    PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
+    PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
+    PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
+  ];
+
+  const request = await requestMultiple(permissions);
+  
+  return (
+    request[PERMISSIONS.ANDROID.BLUETOOTH_CONNECT] === RESULTS.GRANTED &&
+    request[PERMISSIONS.ANDROID.BLUETOOTH_SCAN] === RESULTS.GRANTED &&
+    request[PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION] === RESULTS.GRANTED
+  );
+};
+
+// Extracted function to enable Bluetooth
+const enableBluetooth = async () => {
+  try {
+    await BluetoothManager.enableBluetooth();
+    return true;
+  } catch (error) {
+    console.error('Failed to enable Bluetooth:', error);
+    Alert.alert('Error', 'Failed to enable Bluetooth. Please enable it manually in the settings.');
+    if (Platform.OS === 'android') {
+      BluetoothManager.openBluetoothSettings();
+    }
+    return false;
+  }
+};
+
+// Main function to check if Bluetooth is enabled
 export const isBluetoothEnabled = async () => {
   try {
     const enabled = await BluetoothManager.isBluetoothEnabled();
-    if (!enabled) {
-      const request = await requestMultiple([
-        PERMISSIONS.ANDROID.BLUETOOTH_CONNECT,
-        PERMISSIONS.ANDROID.BLUETOOTH_SCAN,
-        PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
-      ]);
 
-      if (request["android.permission.BLUETOOTH_CONNECT"] === RESULTS.GRANTED &&
-          request["android.permission.BLUETOOTH_SCAN"] === RESULTS.GRANTED &&
-          request["android.permission.ACCESS_FINE_LOCATION"] === RESULTS.GRANTED) {
-        try {
-          await BluetoothManager.enableBluetooth();
-          return true;
-        } catch (error) {
-          console.error('Failed to enable Bluetooth:', error);
-          Alert.alert('Error', 'Failed to enable Bluetooth. Please enable it manually in the settings.');
-          if (Platform.OS === 'android') {
-            BluetoothManager.openBluetoothSettings();
-          }
-          return false;
-        }
+    if (!enabled) {
+      const permissionsGranted = await requestBluetoothPermissions();
+
+      if (permissionsGranted) {
+        return await enableBluetooth();
       } else {
         Alert.alert('Permissions Denied', 'Bluetooth permissions are required to use this app.');
         return false;
       }
-    }
+    } 
+    
     return Boolean(enabled);
   } catch (err) {
     console.error(err);
