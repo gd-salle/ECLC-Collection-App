@@ -14,7 +14,6 @@ export const fetchCollectibles = async (period_date) => {
             account_number: row.account_number,
             name: row.name,
             remaining_balance: row.remaining_balance,
-            due_date: row.due_date,
             payment_type: row.payment_type,
             cheque_number: row.cheque_number,
             amount_paid: row.amount_paid,
@@ -45,7 +44,6 @@ export const fetchAllCollectiblesByPeriodDate = async (period_date) => {
             account_number: row.account_number,
             name: row.name,
             remaining_balance: row.remaining_balance,
-            due_date: row.due_date,
             payment_type: row.payment_type,
             cheque_number: row.cheque_number,
             amount_paid: row.amount_paid,
@@ -74,7 +72,6 @@ export const fetchAllCollectibles = async (period_id) => {
             account_number: row.account_number,
             name: row.name,
             remaining_balance: row.remaining_balance,
-            due_date: row.due_date,
             payment_type: row.payment_type,
             cheque_number: row.cheque_number,
             amount_paid: row.amount_paid,
@@ -122,8 +119,21 @@ export const fetchAllPeriods = async () => {
   try {
     const db = await openDatabase();
     const result = await db.getAllAsync(`
-      SELECT * FROM period WHERE isExported = 0
+      SELECT * FROM period
     `);
+    return result;
+  } catch (error) {
+    console.error('Error fetching period data:', error);
+    throw error;
+  }
+};
+
+export const fetchAllPeriodsByDate = async (date) => {
+  try {
+    const db = await openDatabase();
+    const result = await db.getAllAsync(`
+      SELECT * FROM period WHERE date = ? AND isExported = 0 LIMIT 1
+    `,[date]);
     return result;
   } catch (error) {
     console.error('Error fetching period data:', error);
@@ -180,6 +190,20 @@ export const fetchPeriodIdByDate = async (date) => {
         const db = await openDatabase();
         const result = await db.getFirstAsync(
             'SELECT period_id FROM period WHERE date = ?',
+            [date]
+        );
+        return result ? result.period_id : null;
+    } catch (error) {
+        console.error('Error fetching period ID by date:', error);
+        throw error;
+    }
+};
+
+export const fetchPeriodIdByDateOfNotExported = async (date) => {
+    try {
+        const db = await openDatabase();
+        const result = await db.getFirstAsync(
+            'SELECT period_id FROM period WHERE date = ? AND isExported = 0',
             [date]
         );
         return result ? result.period_id : null;

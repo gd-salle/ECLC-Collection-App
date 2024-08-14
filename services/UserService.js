@@ -71,3 +71,29 @@ export const addConsultant = async (name, username, admin_passcode, area) => {
     throw error;
   }
 };
+
+// Get all Admin names
+export const getAdminNames = async () => {
+  try {
+    const db = await openDatabase();
+    const result = await db.getAllAsync('SELECT username FROM admin_accounts');
+    const adminNames = result.map(row => row.username);
+    return adminNames;
+  } catch (error) {
+    console.error('Error getting admin names:', error);
+    throw error;
+  }
+};
+
+// Get all Consultant names
+export const getConsultantNames = async () => {
+  try {
+    const db = await openDatabase();
+    const result = await db.getAllAsync('SELECT name FROM consultant');
+    const consultantNames = result.map(row => row.name);
+    return consultantNames;
+  } catch (error) {
+    console.error('Error getting consultant names:', error);
+    throw error;
+  }
+};

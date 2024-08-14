@@ -30,16 +30,20 @@ const DataEntry = () => {
   
   // Get the current date
   const getCurrentDate = () => {
-    const now = new Date();
     // Convert to GMT+8
-    const offset = 8 * 60; // GMT+8 in minutes
-    const gmt8Time = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + offset * 60000);
-    return gmt8Time.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const offset = 8 * 60; // GMT+8 offset in minutes
+    const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+    return currentDate// Format YYYY-MM-DD
   };
 
+  console.log('-------------------------------------')
   // Check if periodDate matches the current date
   const isPrintDisabled = periodDate !== getCurrentDate();
-
+  console.log('Test', isPrintDisabled)
+  console.log('Current Date:', getCurrentDate())
+  console.log('Period Date', periodDate)
   // Determine if the checkboxes should be disabled based on the payment_type
   const isCheckboxDisabled = item.payment_type === 'Cash' || item.payment_type === 'Cheque';
 
@@ -178,7 +182,6 @@ const DataEntry = () => {
       payment_type: selectedPaymentMethod,
       cheque_number: chequeNumber,
       amount_paid: amountPaid,
-      daily_due: item.daily_due,
       creditors_name: consultantName,
     };
 
@@ -215,11 +218,9 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
                 <Text style={styles.label}>Daily Due</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.agentName}>{item.name}</Text>
-                <Text style={styles.value}>₱ {item.daily_due}</Text>
+                <Text style={styles.label}>Daily Due</Text>
+                <Text style={styles.value}>{item.daily_due}</Text>
               </View>
-              <Text style={styles.label}>Due Date</Text>
-              <Text style={styles.value}>{item.due_date}</Text>
             </Card.Content>
           </Card>
         </View>

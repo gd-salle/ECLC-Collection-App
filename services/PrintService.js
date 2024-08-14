@@ -3,24 +3,25 @@ import { logo } from '../assets/printLogo'
 
 
 export const printReceipt = async (data) => {
-    const { account_number, name, remaining_balance, payment_type, cheque_number, amount_paid, daily_due, creditors_name } = data;
+    const { account_number, name, remaining_balance, payment_type, cheque_number, amount_paid, creditors_name } = data;
     const columnWidths = [15, 18];
-    const now = new Date();
-    const currentDate = now.toISOString().split('T')[0];
+    const offset = 8 * 60; // GMT+8 offset in minutes
+    const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
 
     try {
 
         const printerWidth = 384; // This can vary slightly depending on the specific printer
-        const imageWidth = 200;   // The width you are setting for the image
+        const imageWidth = 150;   // The width you are setting for the image
         const leftOffset = (printerWidth - imageWidth) / 2; // Calculate center position
 
         // Print the image with manual centering
         await BluetoothEscposPrinter.printPic(logo, { width: imageWidth, left: leftOffset });
 
         // Print text content
-        
-        await BluetoothEscposPrinter.printText('           EXTRA CASH\n', {});
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
+        await BluetoothEscposPrinter.printText('EXTRA CASH\n', {});
         await BluetoothEscposPrinter.printText('\r\n', {});
         await BluetoothEscposPrinter.printText('LENDING CORPORATION\n', {});
         await BluetoothEscposPrinter.printText('\r\n', {});
@@ -31,7 +32,7 @@ export const printReceipt = async (data) => {
         await BluetoothEscposPrinter.printText('--------------------------------', {});
 
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
-        await BluetoothEscposPrinter.printText(`Account Name ${name}\n`, {});
+        await BluetoothEscposPrinter.printText(`Account Name: ${name}\n`, {});
         await BluetoothEscposPrinter.printText('--------------------------------\n', {});
 
         await BluetoothEscposPrinter.printColumn(

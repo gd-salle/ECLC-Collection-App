@@ -87,10 +87,13 @@ const HomeScreen = () => {
   const hideDatePicker = () => {
     setDatePickerVisible(false);
   };
-
   const handleDateConfirm = async (date) => {
-    const formattedDate = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
     setCollectionDate(formattedDate);
+    console.log('Formatted Date', formattedDate)
     await fetchPeriodIdByDate(formattedDate);
     hideDatePicker();
   };
@@ -121,7 +124,7 @@ const HomeScreen = () => {
     try {
       // Fetch all periods from the database
       const allPeriods = await fetchAllPeriods();
-
+      console.log(allPeriods)
       // Find the period corresponding to the selected date
       const currentPeriod = allPeriods.find(period => period.date === selectedDate);
 
@@ -153,7 +156,8 @@ const handleDialogConfirm = async (username, password) => {
 
         // Fetch the period ID using the selected collection date
         const periodId = await fetchAndSetPeriodDate(collectionDate);
-        
+        console.log(periodId)
+        console.log('Colletion Date',collectionDate)
         if (periodId) {
           navigation.navigate('Collectibles', { periodId });
         } else {

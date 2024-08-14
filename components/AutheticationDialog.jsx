@@ -9,30 +9,41 @@ import {
 } from 'react-native';
 import { TextInput, Button, HelperText } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import { getConsultantNames, getAdminNames } from '../services/UserService';
 
 const AuthDialog = ({ visible, onClose, onConfirm, isConsultantAuth }) => {
-  const [username, setUsername] = useState('');
+  const [selectedUser, setSelectedUser] = useState('');
   const [password, setPassword] = useState('');
-  const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
-    if (!visible) {
-      setUsername('');
+    if (visible) {
+      fetchUsers();
+    } else {
+      setSelectedUser('');
       setPassword('');
-      setUsernameError('');
       setPasswordError('');
     }
   }, [visible]);
 
+  const fetchUsers = async () => {
+    try {
+      const consultants = await getConsultantNames();
+      const admins = await getAdminNames();
+      setUsers([...consultants, ...admins]);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
   const validateFields = () => {
     let isValid = true;
 
-    if (username.trim().length === 0) {
-      setUsernameError('Username is required');
+    if (selectedUser.trim().length === 0) {
+      Alert.alert('Error', 'Please select a user');
       isValid = false;
-    } else {
-      setUsernameError('');
     }
 
     if (password.trim().length === 0) {
@@ -51,14 +62,14 @@ const AuthDialog = ({ visible, onClose, onConfirm, isConsultantAuth }) => {
     }
 
     try {
-      await onConfirm(username, password); // Call the onConfirm prop with username and password
+      await onConfirm(selectedUser, password); // Call the onConfirm prop with the selected user and password
     } catch (error) {
       Alert.alert('Error', 'An error occurred during authentication.');
     }
   };
 
   const handleClose = () => {
-    setUsername('');
+    setSelectedUser('');
     setPassword('');
     onClose();
   };
@@ -78,15 +89,20 @@ const AuthDialog = ({ visible, onClose, onConfirm, isConsultantAuth }) => {
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color="black" />
           </TouchableOpacity>
-          {usernameError ? <HelperText type="error">{usernameError}</HelperText> : null}
-          <TextInput
-            label="Username"
-            value={username}
-            onChangeText={setUsername}
-            mode="outlined"
-            style={styles.input}
-            error={!!usernameError}
-          />
+
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedUser}
+              onValueChange={(itemValue) => setSelectedUser(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select User" value="" />
+              {users.map((user) => (
+                <Picker.Item key={user} label={user} value={user} />
+              ))}
+            </Picker>
+          </View>
+
           {passwordError ? <HelperText type="error">{passwordError}</HelperText> : null}
           <TextInput
             label="Password"
@@ -147,6 +163,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
+  },
+  pickerContainer: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 5,
+    borderColor: 'rgba(0, 0, 0, 0.25)',
+    marginBottom: 15,
+    backgroundColor: '#FFF',
+  },
+  picker: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    fontSize: 16,
+    color: 'rgba(0, 0, 0, 0.87)',
   },
   input: {
     width: '100%',

@@ -19,7 +19,7 @@ const getData = async () => {
     const offset = 8 * 60; // GMT+8 offset in minutes
     const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
       .toISOString()
-      .split('T')[0]; // Format to 'YYYY-MM-DD'
+      .split('T')[0];
     let collectibles;
     console.log('Period: ', periodId);
     console.log('CurrentDate:', currentDate);
@@ -77,37 +77,43 @@ const getData = async () => {
           style={styles.searchBar}
         />
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {(searchQuery !== '' ? filteredData : data).map((item, index) => (
-            <TouchableOpacity key={index} onPress={() => handleCardPress(item)}>
-              <Card style={styles.card}>
-                <Card.Content>
-                  <View style={styles.row}>
-                    <Text style={styles.title}>Account Name</Text>
-                    <Text style={styles.title}>Balance</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Paragraph style={styles.accountNumber}>{item.name}</Paragraph>
-                    <Paragraph style={styles.loanAmount}>₱{item.remaining_balance}</Paragraph>
-                  </View>
-                  <View style={styles.detailsRow}>
-                    <View style={styles.detailsColumn}>
-                      <Text style={styles.label}>Account Number</Text>
-                      <Text style={styles.dueDate}>{item.account_number}</Text>
+          {filteredData.length > 0 ? (
+            filteredData.map((item, index) => (
+              <TouchableOpacity key={index} onPress={() => handleCardPress(item)}>
+                <Card style={styles.card}>
+                  <Card.Content>
+                    <View style={styles.row}>
+                      <Text style={styles.title}>Account Name</Text>
+                      <Text style={styles.title}>Balance</Text>
                     </View>
+                    <View style={styles.row}>
+                      <Paragraph style={styles.accountNumber}>{item.name}</Paragraph>
+                      <Paragraph style={styles.loanAmount}>₱{item.remaining_balance}</Paragraph>
+                    </View>
+                    <View style={styles.detailsRow}>
+                      <View style={styles.detailsColumn}>
+                        <Text style={styles.label}>Account Number</Text>
+                        <Text style={styles.dueDate}>{item.account_number}</Text>
+                      </View>
 
-                    <View style={styles.detailsColumn}>
-                      <Text style={styles.label}>Due Date</Text>
-                      <Text style={styles.dueDate}>{item.due_date}</Text>
-                    </View>
+                      <View style={styles.detailsColumn}>
+                        <Text style={styles.label}>Daily Due</Text>
+                        <Text style={styles.dueDate}>{item.daily_due}</Text>
+                      </View>
 
-                    <View style={styles.detailsColumn}>
-                      {/* Placeholder for potential future use */}
+                      <View style={styles.detailsColumn}>
+                        {/* Placeholder for potential future use */}
+                      </View>
                     </View>
-                  </View>
-                </Card.Content>
-              </Card>
-            </TouchableOpacity>
-          ))}
+                  </Card.Content>
+                </Card>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={styles.noCollectiblesText}>
+              No collectibles to be displayed. They might have already been printed or exported.
+            </Text>
+          )}
         </ScrollView>
       </View>
     </View>
@@ -132,6 +138,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
+
   },
   card: {
     marginBottom: 16,
@@ -174,6 +181,12 @@ const styles = StyleSheet.create({
   },
   updateButton: {
     borderRadius: 10,
+  },
+  noCollectiblesText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#0f2045',
+    marginTop: 20,
   },
 });
 

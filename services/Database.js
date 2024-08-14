@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-const databaseName = 'eclcDB3.db';
+const databaseName = 'eclcDB6.db';
 
 export const openDatabase = async () => {
   try {
@@ -44,7 +44,6 @@ export const openDatabase = async () => {
         account_number INTEGER NOT NULL,
         name TEXT NOT NULL,
         remaining_balance REAL NOT NULL,
-        due_date TEXT NOT NULL,
         payment_type TEXT NOT NULL,
         cheque_number TEXT NOT NULL,
         amount_paid REAL NOT NULL DEFAULT 0.00,
