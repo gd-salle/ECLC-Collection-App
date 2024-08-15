@@ -73,10 +73,11 @@ export const printReceipt = async (data) => {
             {},
         );
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
-        await BluetoothEscposPrinter.printText('--------------------------------', {});
-        await BluetoothEscposPrinter.printText(`Collected By`, {});
-        await BluetoothEscposPrinter.printText('\r\n\r\n\r\n', {});
-        await BluetoothEscposPrinter.printText(`---------------`, {});
+        await BluetoothEscposPrinter.printText('--------------------------------\n', {});
+        await BluetoothEscposPrinter.printText(`Collected By:`, {});
+        await BluetoothEscposPrinter.printText('\r\n\r\n\r\n\r\n', {});
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
+        await BluetoothEscposPrinter.printText(`____________________`, {});
         await BluetoothEscposPrinter.printText('\r\n', {});
         await BluetoothEscposPrinter.printText(`${creditors_name}\n\n\n\n`, {});
         await BluetoothEscposPrinter.printText('-\n', {});

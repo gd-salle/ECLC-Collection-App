@@ -56,7 +56,8 @@ const DataEntry = () => {
       try {
         const info = await getConsultantInfo();
         if (info) {
-          setConsultantName(info.name); // Set the consultant's name
+          const name = info.name
+          setConsultantName(name.toUpperCase()); // Set the consultant's name
         }
       } catch (error) {
         console.error('Failed to fetch consultant info:', error);
@@ -218,7 +219,7 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
                 <Text style={styles.label}>Daily Due</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Daily Due</Text>
+                <Text style={styles.value}>{item.name}</Text>
                 <Text style={styles.value}>{item.daily_due}</Text>
               </View>
             </Card.Content>

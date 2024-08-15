@@ -211,25 +211,37 @@ export const exportCollectibles = async (periodId) => {
       return 'error';
     }
     const periodDate = await fetchPeriodDateById(periodId)
-    console.log(periodDate)
 
     const newPeriodId = await fetchPeriodIdByDateOfNotExported(periodDate)
-    console.log('new',newPeriodId)
+    
     const period = await getPeriodData(db, periodDate);
+
+    // const allPeriod = await fetchAllPeriodsByDate(periodDate);
     
-
-
-    const allPeriod = await fetchAllPeriodsByDate(periodDate);
-    console.log('test', periodId)
-    
-    if (!newPeriodId) {
-      Alert.alert('Export Error', 'This period has already been exported.');
-      return 'already_exported';
-    }
-
     if (!period) {
       Alert.alert('Export Error', 'No Period Found.');
       return 'no_period';
+    }
+
+    if (!newPeriodId) {
+      Alert.alert('Export Error', 'Today\'s period has already been exported or no period was found.');
+      return 'already_exported';
+    } else {
+      const userConfirmed = await new Promise((resolve) => {
+        Alert.alert(
+          'Export Confirmation',
+          `You will be exporting Period #${newPeriodId} on ${periodDate}.`,
+          [
+            { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
+            { text: 'OK', onPress: () => resolve(true) },
+          ],
+          { cancelable: false }
+        );
+      });
+
+      if (!userConfirmed) {
+        return 'canceled';
+      }
     }
 
     
@@ -298,11 +310,11 @@ const checkUnprintedCollectibles = async (db, periodId) => {
 };
 
 
-const getPeriodData = async (db, periodData) => {
+const getPeriodData = async (db, periodDate) => {
   const periods = await db.getAllAsync(`
     SELECT * FROM period
-    WHERE date = ? AND isExported = 0
-  `, [periodData]);
+    WHERE date = ?
+  `, [periodDate]);
   return periods.length ? periods[0] : null;
 };
 
