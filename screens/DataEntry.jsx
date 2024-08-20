@@ -4,8 +4,8 @@ import { Appbar, Card, Text, TextInput, Checkbox, Button, Divider } from 'react-
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import WarningConfirmationDialog from '../components/WarningConfimationDialog';
-import { fetchPeriodDateById, numberToWords, updateCollectible } from '../services/CollectiblesServices';
-import { printReceipt } from '../services/PrintService';
+import { fetchPeriodDateById, numberToWords, fetchAccountHistory, updateCollectible} from '../services/CollectiblesServices';
+import { printReceipt, printAccountHistory } from '../services/PrintService';
 import { getConnectionStatus } from '../services/BluetoothService';
 import BluetoothConfig from '../components/BluetoothConfig';
 import { getConsultantInfo } from '../services/UserService';
@@ -19,7 +19,6 @@ const DataEntry = () => {
   const [chequeNumber, setChequeNumber] = useState(item.cheque_number || '');
   const [amountPaid, setAmountPaid] = useState(item.amount_paid || '');
   const [sumOf, setSumOf] = useState(item.amount_paid ? numberToWords(parseFloat(item.amount_paid)) : '');
-  // const [creditorsName, setCreditorsName] = useState('');
   const [confirmationDialogVisible, setConfirmationDialogVisible] = useState(false);
   const [warningDialogVisible, setWarningDialogVisible] = useState(false);
   const [periodDate, setPeriodDate] = useState(null);
@@ -41,6 +40,7 @@ const DataEntry = () => {
   console.log('-------------------------------------')
   // Check if periodDate matches the current date
   const isPrintDisabled = periodDate !== getCurrentDate();
+  
   console.log('Test', isPrintDisabled)
   console.log('Current Date:', getCurrentDate())
   console.log('Period Date', periodDate)
@@ -168,7 +168,7 @@ const DataEntry = () => {
       setAmountPaid(value);
 
       if (!isNaN(numericValue)) {
-          setSumOf(numberToWords(numericValue));
+          setSumOf(numberToWords(numericValue)+' Pesos');
       } else {
           setSumOf('');
       }
@@ -193,7 +193,46 @@ const DataEntry = () => {
       console.error('Error printing receipt:', error);
     }
   };
-console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Cheque')
+
+  const handlePrintHistoryPress = async () => {
+    const accountHistory = await fetchAccountHistory(item.name);
+
+    if (!accountHistory) {
+      Alert.alert('Error', 'No account history found.');
+      return;
+    }
+
+    // Assuming `accountHistory` is an array of history objects
+    const dataToPrint = {
+      history: accountHistory.map(history => ({
+        name: history.name,
+        amount_paid: history.amount_paid,
+        date: history.date,
+      })),
+    };
+    Alert.alert(
+      'Print History',
+      'Are you sure you want to print the history?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          onPress: async () => {
+            try {
+              await printAccountHistory(dataToPrint,item.name)
+            } catch (error) {
+              console.error('Failed to fetch account history:', error);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+
   return (
     <View style={{ flex: 1 }}>
       <Appbar.Header>
@@ -280,7 +319,7 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
           onChangeText={handleAmountPaidChange}
           error={!!errors.amountPaid}
           keyboardType="numeric"
-          editable={!item.amount_paid}  // Only editable if item.amount_paid is not set
+          // editable={!item.amount_paid}  // Only editable if item.amount_paid is not set
         />
         {errors.amountPaid ? (
           <Text style={styles.errorText}>{errors.amountPaid}</Text>
@@ -288,7 +327,7 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
 
         <TextInput
           mode="flat"
-          label="The Sum of"
+          label="Sum of"
           style={styles.input}
           value={sumOf}
           editable={false}
@@ -324,13 +363,19 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
 
       <Button
         mode="contained"
-        style={styles.button}
+        style={[styles.button, !isPrintDisabled ? styles.button : {display: 'none'}]}
         onPress={handleOpenDialog}
         disabled={isPrintDisabled}
       >
         PRINT RECEIPT
       </Button>
-
+      <Button
+        mode="outlined"
+        style={[styles.outlinedButton, { marginTop: 0 }]}
+        onPress={handlePrintHistoryPress}
+      >
+        <Text style={styles.outlineText}>PRINT HISTORY</Text>
+      </Button>
       <BluetoothConfig
         visible={isBluetoothConfigVisible}
         onClose={() => setBluetoothConfigVisible(false)}
@@ -405,6 +450,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 10,
     backgroundColor: '#002B5B',
+  },
+  outlinedButton: {
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderColor: '#002B5B',
+    borderWidth: 2,
+  },
+  outlineText: {
+    color: '#002B5B',
+    fontWeight: '900',
   },
   dateContainer: {
     flexDirection: 'row',

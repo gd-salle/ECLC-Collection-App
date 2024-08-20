@@ -41,13 +41,13 @@ export const openDatabase = async () => {
       );
 
       CREATE TABLE IF NOT EXISTS collectibles (
-        account_number INTEGER NOT NULL,
+        account_number TEXT NOT NULL,
         name TEXT NOT NULL,
-        remaining_balance REAL NOT NULL,
+        remaining_balance TEXT NOT NULL,
         payment_type TEXT NOT NULL,
         cheque_number TEXT NOT NULL,
-        amount_paid REAL NOT NULL DEFAULT 0.00,
-        daily_due REAL NOT NULL,
+        amount_paid TEXT NOT NULL,
+        daily_due TEXT NOT NULL,
         creditors_name TEXT NULL,
         is_printed INTEGER NOT NULL DEFAULT 0,
         period_id INTEGER NOT NULL REFERENCES period(period_id)

@@ -53,22 +53,21 @@ const CollectionDateDialog = ({ visible, onClose, onConfirm }) => {
               style={[styles.input, { flex: 1 }]}
               editable={false}
             />
-            {/* <IconButton
+            <IconButton
               icon="calendar"
               size={24}
               onPress={() => setShowDatePicker(true)}
-            /> */}
+            />
           </View>
 
-          {/* {showDatePicker && (
+          {showDatePicker && (
             <DateTimePicker
               value={date}
               mode="date"
               display="default"
               onChange={onChangeDate}
-              minimumDate={new Date()}
             />
-          )} */}
+          )}
 
           <Button
             mode="contained"
