@@ -74,7 +74,7 @@ const Collectibles = ({ route }) => {
     if (filteredItems.length === 0 && query.length > 0) {
       setNoDataMessage('No matching collectibles found.');
     } else if (data.length === 0) {
-      setNoDataMessage('No collectibles to be displayed. They might have already been printed or exported.');
+      setNoDataMessage('No collectibles to be displayed. They might have already been printed or exported.\n',);
     } else {
       setNoDataMessage('');
     }
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     color: '#0f2045',
-    marginTop: 20,
+    marginTop: '10%',
   },
   loadingContainer: {
     flex: 1,

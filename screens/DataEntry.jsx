@@ -4,7 +4,7 @@ import { Appbar, Card, Text, TextInput, Checkbox, Button, Divider } from 'react-
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import WarningConfirmationDialog from '../components/WarningConfimationDialog';
-import { fetchPeriodDateById, numberToWords, fetchAccountHistory, updateCollectible} from '../services/CollectiblesServices';
+import { fetchPeriodDateById, numberToWords, fetchAccountHistory, updateCollectible, isPeriodExported} from '../services/CollectiblesServices';
 import { printReceipt, printAccountHistory } from '../services/PrintService';
 import { getConnectionStatus } from '../services/BluetoothService';
 import BluetoothConfig from '../components/BluetoothConfig';
@@ -26,7 +26,8 @@ const DataEntry = () => {
   const [confirmData, setConfirmData] = useState({});
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [consultantName, setConsultantName] = useState('');
-  
+  const [isExported, setIsExported] = useState(false);
+
   // Get the current date
   const getCurrentDate = () => {
     // Convert to GMT+8
@@ -39,16 +40,16 @@ const DataEntry = () => {
 
   console.log('-------------------------------------')
   // Check if periodDate matches the current date
-  const isPrintDisabled = periodDate !== getCurrentDate();
+  // const isPrintDisabled = periodDate !== getCurrentDate();
   
-  console.log('Test', isPrintDisabled)
+  // console.log('Test', isPrintDisabled)
   console.log('Current Date:', getCurrentDate())
   console.log('Period Date', periodDate)
   // Determine if the checkboxes should be disabled based on the payment_type
   const isCheckboxDisabled = item.payment_type === 'Cash' || item.payment_type === 'Cheque';
 
   // Determine if the Cheque Number field should be disabled based on its length
-  const isChequeNumberDisabled = isPrintDisabled;
+  // const isChequeNumberDisabled = isPrintDisabled;
 
   console.log('ChequeDisabled? :', isCheckboxDisabled)
   useEffect(() => {
@@ -165,14 +166,17 @@ const DataEntry = () => {
           return;
       }
 
-      setAmountPaid(value);
+    const displayValue = numericValue === 0 ? '' : value;
+      setAmountPaid(displayValue);
 
       if (!isNaN(numericValue)) {
-          setSumOf(numberToWords(numericValue)+' Pesos');
+          setSumOf(numericValue === 0 ? '' : numberToWords(numericValue) + ' Pesos');
       } else {
           setSumOf('');
       }
   };
+
+
 
 
   const handlePrintReceipt = async () => {
@@ -194,9 +198,17 @@ const DataEntry = () => {
     }
   };
 
+  useEffect(() => {
+    const checkExportedStatus = async () => {
+      const result = await isPeriodExported(item.period_id);
+      setIsExported(result);
+    };
+
+    checkExportedStatus();
+  }, [item.period_id]);
+  
   const handlePrintHistoryPress = async () => {
     const accountHistory = await fetchAccountHistory(item.name);
-
     if (!accountHistory) {
       Alert.alert('Error', 'No account history found.');
       return;
@@ -294,7 +306,7 @@ const DataEntry = () => {
             onChangeText={setChequeNumber}
             error={!!errors.chequeNumber}
             keyboardType="numeric"
-            disabled={isChequeNumberDisabled}
+            disabled={isExported}
           />
         )}
         {errors.chequeNumber ? (
@@ -319,7 +331,7 @@ const DataEntry = () => {
           onChangeText={handleAmountPaidChange}
           error={!!errors.amountPaid}
           keyboardType="numeric"
-          // editable={!item.amount_paid}  // Only editable if item.amount_paid is not set
+          disabled={isExported}
         />
         {errors.amountPaid ? (
           <Text style={styles.errorText}>{errors.amountPaid}</Text>
@@ -363,9 +375,9 @@ const DataEntry = () => {
 
       <Button
         mode="contained"
-        style={[styles.button, !isPrintDisabled ? styles.button : {display: 'none'}]}
+        style={[styles.button, !isExported ? styles.button : {display: 'none'}]}
         onPress={handleOpenDialog}
-        disabled={isPrintDisabled}
+        // disabled={!isExported}
       >
         PRINT RECEIPT
       </Button>

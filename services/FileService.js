@@ -2,7 +2,7 @@ import { openDatabase } from "./Database";
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Platform} from 'react-native';
-import { storePeriodDate, fetchPeriodDateById, fetchPeriodIdByDateOfNotExported, fetchAndSetPeriodDate, isPeriodExported, fetchPeriodIdOfNotExported } from './CollectiblesServices';
+import { storePeriodDate, fetchPeriodDateById, fetchPeriodIdByDateOfNotExported, fetchAndSetPeriodDate, isPeriodDateExported, fetchPeriodIdOfNotExported } from './CollectiblesServices';
 import { getConsultantInfo } from './UserService';
 import * as Sharing from 'expo-sharing';
 
@@ -161,7 +161,7 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
   console.log('selected:', selectedCollectionDate);
   console.log('current:', currentDate);
   
-  const result = await isPeriodExported(currentDate);
+  const result = await isPeriodDateExported(currentDate);
   if (result) {
     Alert.alert('Import Error', 'The data for today has already been exported, so you can no longer import it.');
     return false;
@@ -260,7 +260,7 @@ export const exportCollectibles = async (periodId) => {
     const periodDate = await fetchPeriodDateById(periodId)
 
     const newPeriodId = await fetchPeriodIdOfNotExported();
-    
+    const newPeriodDate = await fetchPeriodDateById(newPeriodId);
     const period = await getPeriodData(db, periodDate);
 
 
@@ -278,7 +278,7 @@ export const exportCollectibles = async (periodId) => {
       const userConfirmed = await new Promise((resolve) => {
         Alert.alert(
           'Export Confirmation',
-          `You will be exporting Period #${newPeriodId} on ${periodDate}.`,
+          `You will be exporting Period #${newPeriodId} on ${newPeriodDate}.`,
           [
             { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
             { text: 'OK', onPress: () => resolve(true) },

@@ -54,7 +54,7 @@ export const openDatabase = async () => {
       );
 
       INSERT INTO admin_accounts (username, password) 
-      SELECT 'admin', 'admin'
+      SELECT 'admin', 'ECLC_@dm1n@cc'
       WHERE NOT EXISTS (SELECT 1 FROM admin_accounts WHERE username = 'admin');
     `);
 

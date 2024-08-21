@@ -254,7 +254,7 @@ export const fetchPeriodIdOfNotExported = async () => {
 };
 
 
-export const isPeriodExported = async (date) => { 
+export const isPeriodDateExported = async (date) => { 
   try {
     const db = await openDatabase();
     const result = await db.getFirstAsync(
@@ -272,6 +272,23 @@ export const isPeriodExported = async (date) => {
     throw error;
   }
 
+}
+
+export const isPeriodExported = async (period) => {
+  try {
+    const db = await openDatabase()
+    const result = await db.getFirstAsync(
+      'SELECT date FROM period WHERE period_id = ? and isExported = 1', [period]
+    )
+
+    if (result) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export const numberToWords = (num) => {
