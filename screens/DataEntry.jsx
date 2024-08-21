@@ -4,7 +4,7 @@ import { Appbar, Card, Text, TextInput, Checkbox, Button, Divider } from 'react-
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import WarningConfirmationDialog from '../components/WarningConfimationDialog';
-import { fetchPeriodDateById, numberToWords, fetchAccountHistory, updateCollectible, isPeriodExported} from '../services/CollectiblesServices';
+import { fetchPeriodDateById, numberToWords, fetchAccountHistory, updateCollectible, isPeriodExported, updatePeriod} from '../services/CollectiblesServices';
 import { printReceipt, printAccountHistory } from '../services/PrintService';
 import { getConnectionStatus } from '../services/BluetoothService';
 import BluetoothConfig from '../components/BluetoothConfig';
@@ -43,15 +43,15 @@ const DataEntry = () => {
   // const isPrintDisabled = periodDate !== getCurrentDate();
   
   // console.log('Test', isPrintDisabled)
-  console.log('Current Date:', getCurrentDate())
-  console.log('Period Date', periodDate)
+  // console.log('Current Date:', getCurrentDate())
+  // console.log('Period Date', periodDate)
   // Determine if the checkboxes should be disabled based on the payment_type
   const isCheckboxDisabled = item.payment_type === 'Cash' || item.payment_type === 'Cheque';
 
   // Determine if the Cheque Number field should be disabled based on its length
   // const isChequeNumberDisabled = isPrintDisabled;
 
-  console.log('ChequeDisabled? :', isCheckboxDisabled)
+  // console.log('ChequeDisabled? :', isCheckboxDisabled)
   useEffect(() => {
     const fetchConsultantInfo = async () => {
       try {
@@ -142,6 +142,13 @@ const DataEntry = () => {
 
   const handleWarningConfirm = async () => {
     setWarningDialogVisible(false);
+    // try {
+    //   handlePrintReceipt();
+    //   await updateCollectible(confirmData);
+    //   navigation.navigate('Collectibles', { periodId: item.period_id });
+    // } catch (e) {
+    //   Alert.alert('Error', 'No bluetooth printer connected.');
+    // }
     try {
       if (bluetoothStatus) {
         navigation.navigate('Collectibles', { periodId: item.period_id });
@@ -170,7 +177,7 @@ const DataEntry = () => {
       setAmountPaid(displayValue);
 
       if (!isNaN(numericValue)) {
-          setSumOf(numericValue === 0 ? '' : numberToWords(numericValue) + ' Pesos');
+          setSumOf(numericValue === 0 ? '' : numberToWords(numericValue));
       } else {
           setSumOf('');
       }
@@ -191,6 +198,11 @@ const DataEntry = () => {
     };
 
     console.log(dataToPrint)
+    // try {
+    //   await updatePeriod(item.period_id,item.account_number)
+    // } catch (e) {
+      
+    // }
     try {
       await printReceipt(dataToPrint);
     } catch (error) {
@@ -201,7 +213,16 @@ const DataEntry = () => {
   useEffect(() => {
     const checkExportedStatus = async () => {
       const result = await isPeriodExported(item.period_id);
-      setIsExported(result);
+      console.log('RESULT:', result)
+      console.log('RESULT:', item.is_printed)
+
+      // setIsExported(result);
+
+      if (result || item.is_printed === 1) {
+        setIsExported(true);
+      } else {
+        setIsExported(false)
+      }
     };
 
     checkExportedStatus();

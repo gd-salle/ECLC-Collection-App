@@ -339,7 +339,7 @@ export const numberToWords = (num) => {
     return result.trim();
   };
 
-  return num === 0 ? 'Zero' : convertToWords(num);
+  return num === 0 ? 'Zero' : convertToWords(num).toUpperCase() + ' PESOS';
 };
 
 export const updateCollectible = async ({
@@ -370,7 +370,7 @@ export const updateCollectible = async ({
     throw error;
   }
 };
-export const updateAll = async (periodId) => {
+export const updatePeriod= async (periodId, account_number) => {
   try {
     const db = await openDatabase();
 
@@ -378,12 +378,12 @@ export const updateAll = async (periodId) => {
       UPDATE collectibles
       SET
         is_printed = 1
-
-      WHERE is_printed = 0 AND period_id = ?
-      `, [periodId]);
+      WHERE period_id = ? AND account_number = ?
+      `, [periodId, account_number]);
     
-    console.log('Button Run')
+    console.log('Collectible updated');
   } catch (e) {
     console.error('Error updating collectible:', e);
   }
 }
+
