@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#0f2045',
+    color: '#ffffff',
     fontSize: 18,
   },
 });

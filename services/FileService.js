@@ -8,18 +8,19 @@ import * as Sharing from 'expo-sharing';
 
 // Function to check if an account number already exists in the list
 const isDuplicateCollectible = (accountNumbers, account_number) => {
-  // console.log('Checking for duplicate:', account_number);
-  // console.log('Account Numbers:', accountNumbers);
+  console.log('Checking for duplicate:', account_number);
+  console.log('Account Numbers:', accountNumbers);
 
-  // Ensure all account numbers are of the same type (number) for comparison
-  const accountNumberSet = new Set(accountNumbers.map(num => Number(num)));
-  const numberToCheck = Number(account_number);
-  
-  // console.log('Account Numbers Set:', Array.from(accountNumberSet));
-  // console.log('Number to Check:', numberToCheck);
-  
-  return accountNumberSet.has(numberToCheck);
+  // Create a Set from the account numbers for efficient lookup
+  const accountNumberSet = new Set(accountNumbers);
+
+  console.log('Account Numbers Set:', Array.from(accountNumberSet));
+  console.log('Account Number to Check:', account_number);
+
+  // Check if the account number already exists in the Set
+  return accountNumberSet.has(account_number);
 };
+
 
 // Function to insert collectibles data into the database
 export const insertCollectiblesIntoDatabase = async (entry,selectedDate) => {
@@ -126,6 +127,7 @@ export const handleImport = async (selectedCollectionDate) => {
     } else {
       const db = await openDatabase();
       await deletePeriod(db, periodID);
+      await deleteCollectibles(db, periodID);
     }
     return success;
   } catch (e) {
@@ -437,3 +439,9 @@ const deletePeriod = async (db, periodId) => {
   await db.runAsync(
     'DELETE FROM period WHERE period_id = ?', [periodId]);
 };
+
+const deleteCollectibles = async (db, periodId) => {
+  await db.runAsync(
+    'DELETE FROM collectibles WHERE period_id =?', [periodId]
+  );
+}
