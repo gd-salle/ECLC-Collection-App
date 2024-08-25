@@ -2,7 +2,7 @@ import { openDatabase } from "./Database";
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Platform} from 'react-native';
-import { storePeriodDate } from './CollectiblesServices';
+import { storePeriodDate, fetchPeriodDateById, fetchPeriodIdByDateOfNotExported, fetchAndSetPeriodDate, isPeriodDateExported, fetchPeriodIdOfNotExported } from './CollectiblesServices';
 import { getConsultantInfo } from './UserService';
 import * as Sharing from 'expo-sharing';
 
@@ -11,53 +11,57 @@ const isDuplicateCollectible = (accountNumbers, account_number) => {
   console.log('Checking for duplicate:', account_number);
   console.log('Account Numbers:', accountNumbers);
 
-  // Ensure all account numbers are of the same type (number) for comparison
-  const accountNumberSet = new Set(accountNumbers.map(num => Number(num)));
-  const numberToCheck = Number(account_number);
-  
+  // Create a Set from the account numbers for efficient lookup
+  const accountNumberSet = new Set(accountNumbers);
+
   console.log('Account Numbers Set:', Array.from(accountNumberSet));
-  console.log('Number to Check:', numberToCheck);
-  
-  return accountNumberSet.has(numberToCheck);
+  console.log('Account Number to Check:', account_number);
+
+  // Check if the account number already exists in the Set
+  return accountNumberSet.has(account_number);
 };
 
+
 // Function to insert collectibles data into the database
-export const insertCollectiblesIntoDatabase = async (entry) => {
+export const insertCollectiblesIntoDatabase = async (entry,selectedDate) => {
   try {
     const db = await openDatabase();
-    const { account_number, name, remaining_balance, due_date, payment_type, cheque_number, amount_paid, daily_due, creditors_name, is_printed, period_id } = entry;
-    const now = new Date();
-    const currentDate = now.toISOString().split('T')[0];
+    const { account_number, name, remaining_balance, payment_type, cheque_number, amount_paid, daily_due, creditors_name, is_printed, period_id } = entry;
+    const offset = 8 * 60; // GMT+8 offset in minutes
+    const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
 
+    // console.log('Current Date: ',currentDate)
     // Fetch all collectibles for the current date
     const allRows = await db.getAllAsync(
       'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE p.date = ?', 
-      [currentDate] // Pass currentDate as a parameter
+      [selectedDate] // Pass currentDate as a parameter
     );
 
     // Log fetched rows for debugging
-    console.log('All Rows from DB:', allRows);
+    // console.log('All Rows from DB:', allRows);
 
     // Map the rows from the database to get the account numbers
     const accountNumbers = allRows.map(row => row.account_number);
-    console.log('Account Numbers from DB:', accountNumbers);
+    // console.log('Account Numbers from DB:', accountNumbers);
 
     // Check for duplicates using the extracted account numbers
     const isDuplicate = isDuplicateCollectible(accountNumbers, account_number);
-    console.log('Duplicate Check Result:', isDuplicate);
+    // console.log('Duplicate Check Result:', isDuplicate);
 
     if (isDuplicate) {
-      Alert.alert('Duplicate Entry Detected', `Account number ${account_number} already exists for todays period.`);
+      Alert.alert('Duplicate Entry Detected', `Account number ${account_number} already exists for ${selectedDate} period.`);
       return false; // Indicate failure due to duplicate
     }
 
     // Proceed with adding the new collectible if no duplicate is found
     await db.runAsync(
-      'INSERT INTO collectibles (account_number, name, remaining_balance, due_date, payment_type, cheque_number, amount_paid, daily_due, creditors_name, is_printed, period_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [account_number, name, parseFloat(remaining_balance), due_date, payment_type, cheque_number, parseFloat(amount_paid), parseFloat(daily_due), creditors_name, is_printed, period_id]
+      'INSERT INTO collectibles (account_number, name, remaining_balance, payment_type, cheque_number, amount_paid, daily_due, creditors_name, is_printed, period_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [account_number, name, parseFloat(remaining_balance), payment_type, cheque_number, parseFloat(amount_paid), parseFloat(daily_due), creditors_name, is_printed, period_id]
     );
 
-    console.log('Insertion successful for account number:', account_number);
+    // console.log('Insertion successful for account number:', account_number);
     return true; // Indicate success
 
   } catch (error) {
@@ -89,6 +93,7 @@ export const handleImport = async (selectedCollectionDate) => {
   console.log('Document picker result:', result);
 
   if (result.canceled) {
+    Alert.alert('Canceled', 'Import was canceled.');
     console.log('Document picker canceled');
     return;
   }
@@ -122,6 +127,7 @@ export const handleImport = async (selectedCollectionDate) => {
     } else {
       const db = await openDatabase();
       await deletePeriod(db, periodID);
+      await deleteCollectibles(db, periodID);
     }
     return success;
   } catch (e) {
@@ -131,11 +137,37 @@ export const handleImport = async (selectedCollectionDate) => {
   }
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const processCSVContent = async (content, selectedCollectionDate, periodID) => {
   const requiredHeaders = [
-    'account_number', 'name', 'remaining_balance', 'due_date', 'payment_type', 'cheque_number', 
-    'amount_paid', 'daily_due', 'creditors_name'
+    'account_number', 'name', 'remaining_balance', 'daily_due'
   ];
+
+  const offset = 8 * 60; // GMT+8 offset in minutes
+  const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+    .toISOString()
+    .split('T')[0];
+  console.log('selected:', selectedCollectionDate);
+  console.log('current:', currentDate);
+  
+  const result = await isPeriodDateExported(currentDate);
+  if (result) {
+    Alert.alert('Import Error', 'The data for today has already been exported, so you can no longer import it.');
+    return false;
+  }
 
   const rows = content.split('\n').map(row => row.trim()).filter(row => row.length > 0);
   if (rows.length < 2) {
@@ -165,11 +197,20 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
       obj[header] = values[index] || ''; // Use empty string for missing data
       return obj;
     }, {});
-    // Add the period_id to each entry
     entry['period_id'] = periodID;
     entry['is_printed'] = 0; // Default value for is_printed
+    entry['payment_type'] = '';
+    entry['amount_paid'] = 0;
+    entry['creditors_name'] = '';
+    entry['cheque_number'] = '';
+
+    // Add a check to ensure that entries with remaining_balance of 0 are excluded
+    if (parseFloat(entry['remaining_balance']) === 0) {
+      return null; // Skip this entry
+    }
+
     return entry;
-  });
+  }).filter(entry => entry !== null); // Remove null entries
 
   // Check for any missing data in required fields
   const incompleteRows = data.reduce((acc, entry, index) => {
@@ -186,15 +227,26 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
   }
 
   for (const entry of data) {
-    const success = await insertCollectiblesIntoDatabase(entry);
+    const success = await insertCollectiblesIntoDatabase(entry, selectedCollectionDate);
     if (!success) {
       return false; // Stop further processing if there's an error
     }
   }
-
-  Alert.alert('Success', 'Collectibles Successfully Imported');
   return true;
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -207,18 +259,48 @@ export const exportCollectibles = async (periodId) => {
       Alert.alert('Error', 'Consultant information not found');
       return 'error';
     }
+    const periodDate = await fetchPeriodDateById(periodId)
 
-    const collectibles = await getCollectiblesData(db, periodId);
-    const unprintedCheck = await checkUnprintedCollectibles(db, periodId);
-    if (unprintedCheck === 'unprinted_collectibles') {
-      return 'unprinted_collectibles';
+    const newPeriodId = await fetchPeriodIdOfNotExported();
+    const newPeriodDate = await fetchPeriodDateById(newPeriodId);
+    const period = await getPeriodData(db, periodDate);
+
+
+    // const allPeriod = await fetchAllPeriodsByDate(periodDate);
+    
+    if (!period) {
+      Alert.alert('Export Error', 'No Period Found.');
+      return 'no_period';
     }
-    const period = await getPeriodData(db, periodId);
-    if (!period) throw new Error('Period not found');
-    if (period.isExported) {
-      Alert.alert('Export Error', 'This period has already been exported.');
+
+    if (!newPeriodId) {
+      Alert.alert('Export Error', 'All period has already been exported or no period was found.');
       return 'already_exported';
+    } else {
+      const userConfirmed = await new Promise((resolve) => {
+        Alert.alert(
+          'Export Confirmation',
+          `You will be exporting Period #${newPeriodId} on ${newPeriodDate}.`,
+          [
+            { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
+            { text: 'OK', onPress: () => resolve(true) },
+          ],
+          { cancelable: false }
+        );
+      });
+
+      if (!userConfirmed) {
+        return 'canceled';
+      }
     }
+
+    
+    const collectibles = await getCollectiblesData(db, newPeriodId);
+    const unprintedCheck = await checkUnprintedCollectibles(db, newPeriodId);
+    if (unprintedCheck === 'canceled') {
+      return 'canceled';
+    }
+    
 
     const { name: consultantName } = consultantInfo;
     const formattedDate = getFormattedDate();
@@ -234,7 +316,8 @@ export const exportCollectibles = async (periodId) => {
       return 'canceled';
     }
 
-    await markPeriodAsExported(db, periodId);
+    
+    await markPeriodAsExported(db, newPeriodId);
     // await deleteCollectiblesData(db, periodId);
     // await deletePeriodData(db, periodId);
     return 'success';
@@ -257,18 +340,31 @@ const checkUnprintedCollectibles = async (db, periodId) => {
   `, [periodId]);
 
   if (unprintedCollectibles.length > 0) {
-    // console.log('Not all collectibles are printed. Export aborted.');
-    Alert.alert('Export Aborted', 'Not all collectibles are printed. Please ensure all collectibles are printed before exporting.');
-    return 'unprinted_collectibles';
+  const userConfirmed = await new Promise((resolve) => {
+    Alert.alert(
+      'Warning',
+      'There are still unprinted collectibles. Are you sure you want to export?',
+      [
+        { text: 'Cancel', onPress: () => resolve(false), style: 'cancel' },
+        { text: 'OK', onPress: () => resolve(true) },
+      ],
+      { cancelable: false }
+    );
+  });
+
+  if (!userConfirmed) {
+    return 'canceled';
   }
+}
+
 };
 
 
-const getPeriodData = async (db, periodId) => {
+const getPeriodData = async (db, periodDate) => {
   const periods = await db.getAllAsync(`
     SELECT * FROM period
-    WHERE period_id = ?
-  `, [periodId]);
+    WHERE date = ?
+  `, [periodDate]);
   return periods.length ? periods[0] : null;
 };
 
@@ -276,16 +372,19 @@ const getCollectiblesData = async (db, periodId) => {
   return await db.getAllAsync(`
     SELECT * FROM collectibles
     WHERE period_id = ?
+    ORDER BY name ASC
   `, [periodId]);
 };
 
 const convertToCSV = (collectibles) => {
-  const csvHeaders = 'account_number,name,remaining_balance,due_date,payment_type,cheque_number,amount_paid,daily_due,creditors_name\n';
-  const csvRows = collectibles.map(c => 
-    `${c.account_number},${c.name},${c.remaining_balance},${c.due_date},${c.payment_type},${c.cheque_number},${c.amount_paid},${c.daily_due},${c.creditors_name}`
+  const csvHeaders = 'account_number,name,remaining_balance,payment_type,cheque_number,amount_paid,daily_due,creditors_name\n';
+  const sortedCollectibles = collectibles.sort((a, b) => a.name.localeCompare(b.name));  // Ensure data is sorted alphabetically by name
+  const csvRows = sortedCollectibles.map(c => 
+    `${c.account_number},${c.name},${c.remaining_balance},${c.payment_type},${c.cheque_number},${c.amount_paid},${c.daily_due},${c.creditors_name}`
   );
   return csvHeaders + csvRows.join('\n');
 };
+
 
 const saveCSVToFile = async (fileUri, csvContent, fileName) => {
   try {
@@ -336,21 +435,13 @@ const save = async (uri, filename, mimetype) => {
     return 'success';
   }
 };
-
-const deleteCollectiblesData = async (db, periodId) => {
-  await db.runAsync(`
-    DELETE FROM collectibles
-    WHERE period_id = ?
-  `, [periodId]);
-};
-
-const deletePeriodData = async (db, periodId) => {
-  await db.runAsync(`
-    DELETE FROM period
-    WHERE period_id = ?
-  `, [periodId]);
-};
 const deletePeriod = async (db, periodId) => {
   await db.runAsync(
     'DELETE FROM period WHERE period_id = ?', [periodId]);
 };
+
+const deleteCollectibles = async (db, periodId) => {
+  await db.runAsync(
+    'DELETE FROM collectibles WHERE period_id =?', [periodId]
+  );
+}

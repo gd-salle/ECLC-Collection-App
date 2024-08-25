@@ -60,7 +60,7 @@ index 0000000..0d259dd
 +o/classes
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/.transforms/8d4f37f653f1b48f403f07b61d1f657f/transformed/classes/classes_dex/classes.dex b/node_modules/react-native-bluetooth-escpos-printer/android/build/.transforms/8d4f37f653f1b48f403f07b61d1f657f/transformed/classes/classes_dex/classes.dex
 new file mode 100644
-index 0000000..11f1a52
+index 0000000..8c8772f
 Binary files /dev/null and b/node_modules/react-native-bluetooth-escpos-printer/android/build/.transforms/8d4f37f653f1b48f403f07b61d1f657f/transformed/classes/classes_dex/classes.dex differ
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/generated/source/buildConfig/debug/cn/jystudio/bluetooth/BuildConfig.java b/node_modules/react-native-bluetooth-escpos-printer/android/build/generated/source/buildConfig/debug/cn/jystudio/bluetooth/BuildConfig.java
 new file mode 100644
@@ -144,7 +144,7 @@ index 0000000..9e26dfe
 \ No newline at end of file
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/compile_library_classes_jar/debug/classes.jar b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/compile_library_classes_jar/debug/classes.jar
 new file mode 100644
-index 0000000..28b212e
+index 0000000..99820a0
 Binary files /dev/null and b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/compile_library_classes_jar/debug/classes.jar differ
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/compile_r_class_jar/debug/R.jar b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/compile_r_class_jar/debug/R.jar
 new file mode 100644
@@ -203,7 +203,7 @@ index 0000000..fcf9b0f
 Binary files /dev/null and b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/javac/debug/classes/cn/jystudio/bluetooth/escpos/RNBluetoothEscposPrinterModule$ColumnSplitedString.class differ
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/javac/debug/classes/cn/jystudio/bluetooth/escpos/RNBluetoothEscposPrinterModule.class b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/javac/debug/classes/cn/jystudio/bluetooth/escpos/RNBluetoothEscposPrinterModule.class
 new file mode 100644
-index 0000000..98207d7
+index 0000000..31d43db
 Binary files /dev/null and b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/javac/debug/classes/cn/jystudio/bluetooth/escpos/RNBluetoothEscposPrinterModule.class differ
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/javac/debug/classes/cn/jystudio/bluetooth/escpos/command/sdk/Command.class b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/javac/debug/classes/cn/jystudio/bluetooth/escpos/command/sdk/Command.class
 new file mode 100644
@@ -340,7 +340,7 @@ index 0000000..0637a08
 \ No newline at end of file
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/runtime_library_classes_jar/debug/classes.jar b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/runtime_library_classes_jar/debug/classes.jar
 new file mode 100644
-index 0000000..b3ca18a
+index 0000000..8ca33a7
 Binary files /dev/null and b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/runtime_library_classes_jar/debug/classes.jar differ
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/symbol_list_with_package_name/debug/package-aware-r.txt b/node_modules/react-native-bluetooth-escpos-printer/android/build/intermediates/symbol_list_with_package_name/debug/package-aware-r.txt
 new file mode 100644
@@ -390,7 +390,7 @@ index 0000000..627765a
 +		INJECTED from C:\Users\gerar\Desktop\Programming\React_Native\BluetoothPrinter\node_modules\react-native-bluetooth-escpos-printer\android\src\main\AndroidManifest.xml
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin b/node_modules/react-native-bluetooth-escpos-printer/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin
 new file mode 100644
-index 0000000..8360876
+index 0000000..ce50a8c
 Binary files /dev/null and b/node_modules/react-native-bluetooth-escpos-printer/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin differ
 diff --git a/node_modules/react-native-bluetooth-escpos-printer/android/src/main/java/cn/jystudio/bluetooth/RNBluetoothManagerModule.java b/node_modules/react-native-bluetooth-escpos-printer/android/src/main/java/cn/jystudio/bluetooth/RNBluetoothManagerModule.java
 index dd5d33e..bcdf209 100644

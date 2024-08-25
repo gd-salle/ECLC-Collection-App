@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-const databaseName = 'eclcDB4.db';
+const databaseName = 'eclcDB.db';
 
 export const openDatabase = async () => {
   try {
@@ -31,7 +31,8 @@ export const openDatabase = async () => {
         name TEXT NOT NULL,
         admin_passcode TEXT NOT NULL,
         password TEXT NOT NULL,
-        area TEXT NOT NULL
+        area TEXT NOT NULL,
+        status INTEGER NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS period (
@@ -41,21 +42,20 @@ export const openDatabase = async () => {
       );
 
       CREATE TABLE IF NOT EXISTS collectibles (
-        account_number INTEGER NOT NULL,
+        account_number TEXT NOT NULL,
         name TEXT NOT NULL,
-        remaining_balance REAL NOT NULL,
-        due_date TEXT NOT NULL,
+        remaining_balance TEXT NOT NULL,
         payment_type TEXT NOT NULL,
         cheque_number TEXT NOT NULL,
-        amount_paid REAL NOT NULL DEFAULT 0.00,
-        daily_due REAL NOT NULL,
+        amount_paid TEXT NOT NULL,
+        daily_due TEXT NOT NULL,
         creditors_name TEXT NULL,
         is_printed INTEGER NOT NULL DEFAULT 0,
         period_id INTEGER NOT NULL REFERENCES period(period_id)
       );
 
       INSERT INTO admin_accounts (username, password) 
-      SELECT 'admin', 'admin'
+      SELECT 'admin', 'ECLC_@dm1n@cc'
       WHERE NOT EXISTS (SELECT 1 FROM admin_accounts WHERE username = 'admin');
     `);
 

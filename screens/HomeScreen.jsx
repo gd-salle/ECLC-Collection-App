@@ -1,24 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Image, Alert } from 'react-native';
+import { StyleSheet, View, Text, Image, Alert, ActivityIndicator, Modal } from 'react-native';
 import { Button, IconButton, TextInput } from 'react-native-paper';
+import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from 'react-native-modal-datetime-picker';
 import { useNavigation } from '@react-navigation/native';
 import AuthDialog from '../components/AutheticationDialog';
 import AdminToolsDialog from '../components/AdminToolsDialog';
 import AccountCreationDialog from '../components/AccountCreationDialog';
+import UpdateConsultantDialog from '../components/UpdateConsultantDialog';
 import ExportConfirmationDialog from '../components/ExportConfirmationDialog';
 import CollectionDateDialog from '../components/CollectionDateDialog';
 import BluetoothConfig from '../components/BluetoothConfig';
 import { handleImport } from '../services/FileService';
-import { getConsultantInfo } from '../services/UserService';
+// import { getConsultantInfo } from '../services/UserService';
 import { fetchLatestPeriodDate, fetchPeriodIdByDate, fetchLatestPeriodID, fetchAllPeriods } from '../services/CollectiblesServices';
 import { exportCollectibles } from '../services/FileService';
 import { isBluetoothEnabled } from '../services/BluetoothService';
-import { getAdmin, getConsultant } from '../services/UserService';
+import { getAdmin, getConsultant,fetchAllActiveConsultant } from '../services/UserService';
 
 const HomeScreen = () => {
-  const [consultant, setConsultant] = useState('');
-  const [area, setArea] = useState('');
+  // const [consultant, setConsultant] = useState('');
+  
   const [collectionDate, setCollectionDate] = useState('');
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
   const [isDialogVisible, setDialogVisible] = useState(false);
@@ -26,15 +28,20 @@ const HomeScreen = () => {
   const [isAdminToolsVisible, setAdminToolsVisible] = useState(false);
   const [isExportConfirmationVisible, setExportConfirmationVisible] = useState(false);
   const [isAccountCreationVisible, setAccountCreationVisible] = useState(false);
+  const [isUpdateConsultantVisible, setUpdateConsultantVisible] = useState(false);
   const [isCollectionDateDialogVisible, setCollectionDateDialogVisible] = useState(false);
   const [pendingAction, setPendingAction] = useState(() => {});
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [refreshFlag, setRefreshFlag] = useState(false);
   const navigation = useNavigation();
-
+  const [selectedConsultant, setSelectedConsultant] = useState('');
+  const [selectedConsultantName, setSelectedConsultantName] = useState('');
+  const [consultants, setConsultants] = useState([]);
+  const [area, setArea] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // New state for loading
   useEffect(() => {
     const fetchData = async () => {
-      await fetchConsultantInfo();
+      // await fetchConsultantInfo();
       await fetchAndSetLatestPeriodDate();
     };
 
@@ -51,21 +58,31 @@ const HomeScreen = () => {
       }
     };
 
+    const fetchConsultants = async () => {
+    try {
+        const consultantsList = await fetchAllActiveConsultant();
+        setConsultants(consultantsList);
+      } catch (error) {
+        console.error('Failed to fetch consultants:', error);
+      }
+    };
+
+    fetchConsultants();
     fetchData();
     checkBluetooth();
   }, [refreshFlag]);
 
-  const fetchConsultantInfo = async () => {
-    try {
-      const consultantInfo = await getConsultantInfo();
-      if (consultantInfo) {
-        setConsultant(consultantInfo.name);
-        setArea(consultantInfo.area);
-      }
-    } catch (error) {
-      console.error('Failed to fetch consultant info:', error);
-    }
-  };
+  // const fetchConsultantInfo = async () => {
+  //   try {
+  //     const consultantInfo = await getConsultantInfo();
+  //     if (consultantInfo) {
+  //       setConsultant(consultantInfo.name);
+  //       setArea(consultantInfo.area);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to fetch consultant info:', error);
+  //   }
+  // };
 
   const fetchAndSetLatestPeriodDate = async () => {
     try {
@@ -89,14 +106,17 @@ const HomeScreen = () => {
   };
 
   const handleDateConfirm = async (date) => {
-    const formattedDate = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
     setCollectionDate(formattedDate);
     await fetchPeriodIdByDate(formattedDate);
     hideDatePicker();
   };
 
   const handleStartCollection = () => {
-    if (!consultant) {
+    if (!selectedConsultant) {
       Alert.alert('No Consultant', 'There is no consultant information.');
       return;
     }
@@ -119,20 +139,14 @@ const HomeScreen = () => {
 
   const fetchAndSetPeriodDate = async (selectedDate) => {
     try {
-      // Fetch all periods from the database
       const allPeriods = await fetchAllPeriods();
-
-      // Find the period corresponding to the selected date
       const currentPeriod = allPeriods.find(period => period.date === selectedDate);
 
-      // If a period is found for the selected date, store its ID and return it
       if (currentPeriod) {
         const periodId = currentPeriod.period_id;
-        console.log(`Period ID for the selected date (${selectedDate}): ${periodId}`);
         setCollectionDate(selectedDate); // Set the selected date
         return periodId; // Return the period ID for use in navigation
       } else {
-        console.log(`No period found for the selected date (${selectedDate})`);
         setCollectionDate(''); // Clear the date if no period is found
         return null; // Return null if no period is found
       }
@@ -142,44 +156,47 @@ const HomeScreen = () => {
     }
   };
 
-  
-const handleDialogConfirm = async (username, password) => {
-  try {
-    if (authAction === 'consultant') {
-      const consultant = await getConsultant(username, password);
-      const admin = await getAdmin(username, password);
-      if (admin || consultant) {
-        setDialogVisible(false);
-
-        // Fetch the period ID using the selected collection date
-        const periodId = await fetchAndSetPeriodDate(collectionDate);
-        
-        if (periodId) {
-          navigation.navigate('Collectibles', { periodId });
-        } else {
-          Alert.alert('Error', 'No valid period ID found for the selected date.');
+  const handleDialogConfirm = async (username, password) => {
+    const consultantInfo = consultants.find(c => c.consultant_id === selectedConsultant);
+    try {
+      if (authAction === 'consultant') {
+        // Skip validation if the username is 'admin'
+        if (username !== 'admin' && consultantInfo && username !== consultantInfo.name) {
+          Alert.alert('Validation Error', 'Username should match the selected consultant\'s name.');
+          return; // Exit the function if the names do not match
         }
-      } else {
-        Alert.alert('Authentication Failed', 'Invalid consultant credentials.');
-      }
-    } else if (authAction === 'admin') {
-      const admin = await getAdmin(username, password);
-      if (admin) {
-        setDialogVisible(false);
-        setAdminToolsVisible(true);
-      } else {
         const consultant = await getConsultant(username, password);
-        if (consultant) {
-          Alert.alert('Access Denied', 'Consultants cannot access admin features.');
+        const admin = await getAdmin(username, password);
+        if (admin || consultant) {
+          setDialogVisible(false);
+
+          const periodId = await fetchAndSetPeriodDate(collectionDate);
+          if (periodId) {
+            navigation.navigate('Collectibles', { periodId });
+          } else {
+            Alert.alert('Error', 'No valid period ID found for the selected date.');
+          }
         } else {
-          Alert.alert('Authentication Failed', 'Invalid admin credentials.');
+          Alert.alert('Authentication Failed', 'Invalid consultant credentials.');
+        }
+      } else if (authAction === 'admin') {
+        const admin = await getAdmin(username, password);
+        if (admin) {
+          setDialogVisible(false);
+          setAdminToolsVisible(true);
+        } else {
+          const consultant = await getConsultant(username, password);
+          if (consultant) {
+            Alert.alert('Access Denied', 'Consultants cannot access admin features.');
+          } else {
+            Alert.alert('Authentication Failed', 'Invalid admin credentials.');
+          }
         }
       }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred during authentication.');
     }
-  } catch (error) {
-    Alert.alert('Error', 'An error occurred during authentication.');
-  }
-};
+  };
 
 
   const handleExport = async () => {
@@ -194,7 +211,7 @@ const handleDialogConfirm = async (username, password) => {
 
       if (status === 'success') {
         Alert.alert('Success', 'Collectibles exported successfully!');
-        setRefreshFlag((prev) => !prev);
+        setRefreshFlag(prev => !prev);
       } else if (status === 'canceled') {
         Alert.alert('Canceled', 'Export was canceled.');
       }
@@ -225,8 +242,8 @@ const handleDialogConfirm = async (username, password) => {
 
   const handleAccountCreationConfirm = async (consultantName, area, username, password) => {
     try {
-      console.log('New Account:', { consultantName, area, username, password });
-      await fetchConsultantInfo();
+      setRefreshFlag(prev => !prev);
+
       setAdminToolsVisible(true);
       setAccountCreationVisible(false);
     } catch (error) {
@@ -238,27 +255,85 @@ const handleDialogConfirm = async (username, password) => {
     setCollectionDateDialogVisible(false);
   };
 
-  const handleCollectionDateDialogConfirm = async (date) => {
-    setCollectionDate(date);
-    const importSuccessful = await handleImport(date);
-    if (!importSuccessful) {
-      setCollectionDate('');
-    }
-    setCollectionDateDialogVisible(false);
-    pendingAction();
+  const handleUpdateConsultant = () => {
+    setUpdateConsultantVisible(false);
+    setTimeout(() => {
+      setUpdateConsultantVisible(true);
+    }, 300);
+  }
+
+  const handleUpdateConsultantClose = () => {
+    setUpdateConsultantVisible(false);
   };
+
+  const handleUpdateConsultantConfirm = async () => {
+    try {
+      setAdminToolsVisible(true);
+      setUpdateConsultantVisible(false);
+      setRefreshFlag(prev => !prev);
+    } catch (error) {
+      console.error('Error Updating Consultant:', error)
+    }
+  };
+
+  const handleUpdateConsultantStatusConfirm = async () => {
+    try {
+      setAdminToolsVisible(true);
+      setUpdateConsultantVisible(false);
+      setSelectedConsultant('');
+      setArea('');
+      setRefreshFlag(prev => !prev);
+    } catch (error) {
+      console.error('Error Updating Consultant:', error)
+    }
+  };
+
+  const handleCollectionDateDialogConfirm = async (date) => {
+    console.log('asfgjabfvaj',date);
+    setCollectionDate(date);
+    setIsLoading(true);
+    setAdminToolsVisible(false);
+    const importSuccessful = await handleImport(date);
+    setIsLoading(false);
+    if (importSuccessful) {
+      Alert.alert('Success', 'Collectibles Successfully Imported', [{ text: 'OK', onPress: () => {
+        setAdminToolsVisible(true);
+        setCollectionDateDialogVisible(false);
+      }}]);
+    } else {
+      setCollectionDate('');
+      setCollectionDateDialogVisible(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
       <Text style={styles.title}>EXTRA CASH LENDING CORP.</Text>
-      <TextInput
-        label="Consultant"
-        value={consultant}
-        onChangeText={setConsultant}
-        mode="outlined"
-        editable={false}
-        style={styles.input}
-      />
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={selectedConsultant}
+          onValueChange={(itemValue) => {
+            setSelectedConsultant(itemValue);
+            
+            // Find the selected consultant's area and update the area state
+            const selectedConsultantData = consultants.find(c => c.consultant_id === itemValue);
+            if (selectedConsultantData) {
+              setArea(selectedConsultantData.area); // Update area state
+              // console.log(selectedConsultantData.name);
+              setSelectedConsultantName(selectedConsultantData.name);
+            } else {
+              setArea(''); // Clear area if no consultant is selected
+            }
+          }}
+          style={styles.picker}
+        >
+          <Picker.Item label="Select Consultant" value="" />
+          {consultants.map((consultant) => (
+            <Picker.Item key={consultant.consultant_id} label={consultant.name} value={consultant.consultant_id} />
+          ))}
+        </Picker>
+      </View>
       <TextInput
         label="Area"
         value={area}
@@ -304,6 +379,7 @@ const handleDialogConfirm = async (username, password) => {
         onClose={handleDialogClose}
         onConfirm={handleDialogConfirm}
         isConsultantAuth={authAction === 'consultant'}
+        selectedConsultantName={selectedConsultantName}
       />
       <AdminToolsDialog
         visible={isAdminToolsVisible}
@@ -316,6 +392,7 @@ const handleDialogConfirm = async (username, password) => {
         }}
         onExport={() => setExportConfirmationVisible(true)}
         onCreateAccount={handleAccountCreation}
+        onUpdateConsultant={handleUpdateConsultant}
       />
       <AccountCreationDialog
         visible={isAccountCreationVisible}
@@ -333,6 +410,12 @@ const handleDialogConfirm = async (username, password) => {
         onClose={handleCollectionDateDialogClose}
         onConfirm={handleCollectionDateDialogConfirm}
       />
+      <UpdateConsultantDialog
+        visible={isUpdateConsultantVisible}
+        onClose={handleUpdateConsultantClose}
+        onConfirm={handleUpdateConsultantConfirm}
+        onConfirmStatus={handleUpdateConsultantStatusConfirm}
+      />
       <BluetoothConfig
         visible={isBluetoothConfigVisible}
         onClose={() => setBluetoothConfigVisible(false)}
@@ -343,6 +426,19 @@ const handleDialogConfirm = async (username, password) => {
         onConfirm={handleDateConfirm}
         onCancel={hideDatePicker}
       />
+      {isLoading && (
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={isLoading}
+        >
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#ffffff" />
+            <Text style={styles.loadingText}>Importing Data...</Text>
+          </View>
+        </Modal>
+      )}
+
     </View>
   );
 };
@@ -361,7 +457,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     marginBottom: 20,
-    objectFit: 'contain'
+    objectFit: 'contain',
   },
   title: {
     fontSize: 24,
@@ -399,5 +495,32 @@ const styles = StyleSheet.create({
   },
   adminButtonText: {
     color: '#0A154D',
+  },
+  loadingOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    zIndex: 1000,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#ffffff',
+    fontSize: 18,
+  },
+  pickerContainer: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 5,
+    borderColor: 'gray',
+    marginBottom: 15,
+    backgroundColor: '#FFF',
+  },
+  picker: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    fontSize: 16,
+    color: 'rgba(0, 0, 0, 0.87)',
   },
 });

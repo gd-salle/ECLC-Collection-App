@@ -4,8 +4,8 @@ import { Appbar, Card, Text, TextInput, Checkbox, Button, Divider } from 'react-
 import { useNavigation, useRoute } from '@react-navigation/native';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import WarningConfirmationDialog from '../components/WarningConfimationDialog';
-import { fetchPeriodDateById, numberToWords, updateCollectible } from '../services/CollectiblesServices';
-import { printReceipt } from '../services/PrintService';
+import { fetchPeriodDateById, numberToWords, fetchAccountHistory, updateCollectible, isPeriodExported, updatePeriod} from '../services/CollectiblesServices';
+import { printReceipt, printAccountHistory } from '../services/PrintService';
 import { getConnectionStatus } from '../services/BluetoothService';
 import BluetoothConfig from '../components/BluetoothConfig';
 import { getConsultantInfo } from '../services/UserService';
@@ -19,7 +19,6 @@ const DataEntry = () => {
   const [chequeNumber, setChequeNumber] = useState(item.cheque_number || '');
   const [amountPaid, setAmountPaid] = useState(item.amount_paid || '');
   const [sumOf, setSumOf] = useState(item.amount_paid ? numberToWords(parseFloat(item.amount_paid)) : '');
-  // const [creditorsName, setCreditorsName] = useState('');
   const [confirmationDialogVisible, setConfirmationDialogVisible] = useState(false);
   const [warningDialogVisible, setWarningDialogVisible] = useState(false);
   const [periodDate, setPeriodDate] = useState(null);
@@ -27,32 +26,39 @@ const DataEntry = () => {
   const [confirmData, setConfirmData] = useState({});
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [consultantName, setConsultantName] = useState('');
-  
+  const [isExported, setIsExported] = useState(false);
+
   // Get the current date
   const getCurrentDate = () => {
-    const now = new Date();
     // Convert to GMT+8
-    const offset = 8 * 60; // GMT+8 in minutes
-    const gmt8Time = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + offset * 60000);
-    return gmt8Time.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const offset = 8 * 60; // GMT+8 offset in minutes
+    const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+    return currentDate// Format YYYY-MM-DD
   };
 
+  console.log('-------------------------------------')
   // Check if periodDate matches the current date
-  const isPrintDisabled = periodDate !== getCurrentDate();
-
+  // const isPrintDisabled = periodDate !== getCurrentDate();
+  
+  // console.log('Test', isPrintDisabled)
+  // console.log('Current Date:', getCurrentDate())
+  // console.log('Period Date', periodDate)
   // Determine if the checkboxes should be disabled based on the payment_type
   const isCheckboxDisabled = item.payment_type === 'Cash' || item.payment_type === 'Cheque';
 
   // Determine if the Cheque Number field should be disabled based on its length
-  const isChequeNumberDisabled = isPrintDisabled;
+  // const isChequeNumberDisabled = isPrintDisabled;
 
-  console.log('ChequeDisabled? :', isCheckboxDisabled)
+  // console.log('ChequeDisabled? :', isCheckboxDisabled)
   useEffect(() => {
     const fetchConsultantInfo = async () => {
       try {
         const info = await getConsultantInfo();
         if (info) {
-          setConsultantName(info.name); // Set the consultant's name
+          const name = info.name
+          setConsultantName(name.toUpperCase()); // Set the consultant's name
         }
       } catch (error) {
         console.error('Failed to fetch consultant info:', error);
@@ -136,6 +142,13 @@ const DataEntry = () => {
 
   const handleWarningConfirm = async () => {
     setWarningDialogVisible(false);
+    // try {
+    //   handlePrintReceipt();
+    //   await updateCollectible(confirmData);
+    //   navigation.navigate('Collectibles', { periodId: item.period_id });
+    // } catch (e) {
+    //   Alert.alert('Error', 'No bluetooth printer connected.');
+    // }
     try {
       if (bluetoothStatus) {
         navigation.navigate('Collectibles', { periodId: item.period_id });
@@ -153,14 +166,25 @@ const DataEntry = () => {
   };
 
   const handleAmountPaidChange = (value) => {
-    setAmountPaid(value);
-    const numericValue = parseFloat(value);
-    if (!isNaN(numericValue)) {
-      setSumOf(numberToWords(numericValue));
-    } else {
-      setSumOf('');
-    }
+      const numericValue = parseFloat(value);
+
+      if (numericValue > parseFloat(item.remaining_balance)) {
+          Alert.alert('Error', 'The amount paid exceeds the remaining balance.');
+          return;
+      }
+
+    const displayValue = numericValue === 0 ? '' : value;
+      setAmountPaid(displayValue);
+
+      if (!isNaN(numericValue)) {
+          setSumOf(numericValue === 0 ? '' : numberToWords(numericValue));
+      } else {
+          setSumOf('');
+      }
   };
+
+
+
 
   const handlePrintReceipt = async () => {
     const dataToPrint = {
@@ -170,18 +194,78 @@ const DataEntry = () => {
       payment_type: selectedPaymentMethod,
       cheque_number: chequeNumber,
       amount_paid: amountPaid,
-      daily_due: item.daily_due,
       creditors_name: consultantName,
     };
 
     console.log(dataToPrint)
+    // try {
+    //   await updatePeriod(item.period_id,item.account_number)
+    // } catch (e) {
+      
+    // }
     try {
       await printReceipt(dataToPrint);
     } catch (error) {
       console.error('Error printing receipt:', error);
     }
   };
-console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Cheque')
+
+  useEffect(() => {
+    const checkExportedStatus = async () => {
+      const result = await isPeriodExported(item.period_id);
+      console.log('RESULT:', result)
+      console.log('RESULT:', item.is_printed)
+
+      // setIsExported(result);
+
+      if (result || item.is_printed === 1) {
+        setIsExported(true);
+      } else {
+        setIsExported(false)
+      }
+    };
+
+    checkExportedStatus();
+  }, [item.period_id]);
+  
+  const handlePrintHistoryPress = async () => {
+    const accountHistory = await fetchAccountHistory(item.name);
+    if (!accountHistory) {
+      Alert.alert('Error', 'No account history found.');
+      return;
+    }
+
+    // Assuming `accountHistory` is an array of history objects
+    const dataToPrint = {
+      history: accountHistory.map(history => ({
+        name: history.name,
+        amount_paid: history.amount_paid,
+        date: history.date,
+      })),
+    };
+    Alert.alert(
+      'Print History',
+      'Are you sure you want to print the history?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          onPress: async () => {
+            try {
+              await printAccountHistory(dataToPrint,item.name)
+            } catch (error) {
+              console.error('Failed to fetch account history:', error);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+
   return (
     <View style={{ flex: 1 }}>
       <Appbar.Header>
@@ -207,11 +291,9 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
                 <Text style={styles.label}>Daily Due</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.agentName}>{item.name}</Text>
-                <Text style={styles.value}>₱ {item.daily_due}</Text>
+                <Text style={styles.value}>{item.name}</Text>
+                <Text style={styles.value}>{item.daily_due}</Text>
               </View>
-              <Text style={styles.label}>Due Date</Text>
-              <Text style={styles.value}>{item.due_date}</Text>
             </Card.Content>
           </Card>
         </View>
@@ -245,7 +327,7 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
             onChangeText={setChequeNumber}
             error={!!errors.chequeNumber}
             keyboardType="numeric"
-            disabled={isChequeNumberDisabled}
+            disabled={isExported}
           />
         )}
         {errors.chequeNumber ? (
@@ -270,7 +352,7 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
           onChangeText={handleAmountPaidChange}
           error={!!errors.amountPaid}
           keyboardType="numeric"
-          editable={!item.amount_paid}  // Only editable if item.amount_paid is not set
+          disabled={isExported}
         />
         {errors.amountPaid ? (
           <Text style={styles.errorText}>{errors.amountPaid}</Text>
@@ -278,7 +360,7 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
 
         <TextInput
           mode="flat"
-          label="The Sum of"
+          label="Sum of"
           style={styles.input}
           value={sumOf}
           editable={false}
@@ -314,13 +396,19 @@ console.log(selectedPaymentMethod !== 'Cash' || selectedPaymentMethod !== 'Chequ
 
       <Button
         mode="contained"
-        style={styles.button}
+        style={[styles.button, !isExported ? styles.button : {display: 'none'}]}
         onPress={handleOpenDialog}
-        disabled={isPrintDisabled}
+        // disabled={!isExported}
       >
         PRINT RECEIPT
       </Button>
-
+      <Button
+        mode="outlined"
+        style={[styles.outlinedButton, { marginTop: 0 }]}
+        onPress={handlePrintHistoryPress}
+      >
+        <Text style={styles.outlineText}>PRINT HISTORY</Text>
+      </Button>
       <BluetoothConfig
         visible={isBluetoothConfigVisible}
         onClose={() => setBluetoothConfigVisible(false)}
@@ -395,6 +483,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 10,
     backgroundColor: '#002B5B',
+  },
+  outlinedButton: {
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderColor: '#002B5B',
+    borderWidth: 2,
+  },
+  outlineText: {
+    color: '#002B5B',
+    fontWeight: '900',
   },
   dateContainer: {
     flexDirection: 'row',

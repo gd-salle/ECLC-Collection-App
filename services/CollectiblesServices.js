@@ -1,12 +1,12 @@
 import { openDatabase } from './Database';
 
-export const fetchCollectibles = async (period_id) => {
-    console.log(period_id)
+export const fetchCollectibles = async (period_date) => {
+    console.log(period_date)
     try {
         const db = await openDatabase();
         const allRows = await db.getAllAsync(
-            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE c.is_printed = 0 AND p.isExported = 0 AND c.period_id = ?', 
-            [period_id] // Pass period_id as a parameter
+            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE p.date = ?', 
+            [period_date] // Pass period_id as a parameter
         );
 
         // Map the rows from the database to your Collectibles object
@@ -14,7 +14,6 @@ export const fetchCollectibles = async (period_id) => {
             account_number: row.account_number,
             name: row.name,
             remaining_balance: row.remaining_balance,
-            due_date: row.due_date,
             payment_type: row.payment_type,
             cheque_number: row.cheque_number,
             amount_paid: row.amount_paid,
@@ -45,7 +44,6 @@ export const fetchAllCollectiblesByPeriodDate = async (period_date) => {
             account_number: row.account_number,
             name: row.name,
             remaining_balance: row.remaining_balance,
-            due_date: row.due_date,
             payment_type: row.payment_type,
             cheque_number: row.cheque_number,
             amount_paid: row.amount_paid,
@@ -74,7 +72,6 @@ export const fetchAllCollectibles = async (period_id) => {
             account_number: row.account_number,
             name: row.name,
             remaining_balance: row.remaining_balance,
-            due_date: row.due_date,
             payment_type: row.payment_type,
             cheque_number: row.cheque_number,
             amount_paid: row.amount_paid,
@@ -91,6 +88,33 @@ export const fetchAllCollectibles = async (period_id) => {
         throw error;
     }
 };
+
+export const fetchAccountHistory = async (account_name) => {
+  try {
+    const db = await openDatabase();
+    const allRows = await db.getAllAsync(
+      `SELECT c.name, c.amount_paid, p.date 
+       FROM collectibles c 
+       JOIN period p ON c.period_id = p.period_id 
+       WHERE c.name = ?`, 
+      [account_name]
+    );
+
+    // Map the rows from the database to your AccountHistory object
+    const accountHistory = allRows.map(row => ({
+      name: row.name,
+      amount_paid: row.amount_paid,
+      date: row.date,
+    }));
+
+    return accountHistory;
+  } catch (error) {
+    console.error('Error fetching account history:', error);
+    throw error;
+  }
+};
+
+
 
 export const storePeriodDate = async (date) => {
   try {
@@ -122,8 +146,21 @@ export const fetchAllPeriods = async () => {
   try {
     const db = await openDatabase();
     const result = await db.getAllAsync(`
-      SELECT * FROM period WHERE isExported = 0
+      SELECT * FROM period
     `);
+    return result;
+  } catch (error) {
+    console.error('Error fetching period data:', error);
+    throw error;
+  }
+};
+
+export const fetchAllPeriodsByDate = async (date) => {
+  try {
+    const db = await openDatabase();
+    const result = await db.getAllAsync(`
+      SELECT * FROM period WHERE date = ? AND isExported = 0 LIMIT 1
+    `,[date]);
     return result;
   } catch (error) {
     console.error('Error fetching period data:', error);
@@ -189,6 +226,70 @@ export const fetchPeriodIdByDate = async (date) => {
     }
 };
 
+export const fetchPeriodIdByDateOfNotExported = async (date) => {
+    try {
+        const db = await openDatabase();
+        const result = await db.getFirstAsync(
+            'SELECT period_id FROM period WHERE date = ? AND isExported = 0',
+            [date]
+        );
+        return result ? result.period_id : null;
+    } catch (error) {
+        console.error('Error fetching period ID by date:', error);
+        throw error;
+    }
+};
+
+export const fetchPeriodIdOfNotExported = async () => {
+    try {
+        const db = await openDatabase();
+        const result = await db.getFirstAsync(
+            'SELECT period_id FROM period WHERE isExported = 0 LIMIT 1'
+        );
+        return result ? result.period_id : null;
+    } catch (error) {
+        console.error('Error fetching period ID by date:', error);
+        throw error;
+    }
+};
+
+
+export const isPeriodDateExported = async (date) => { 
+  try {
+    const db = await openDatabase();
+    const result = await db.getFirstAsync(
+      'SELECT period_id FROM period WHERE date = ? AND isExported = 1 LIMIT 1',
+      [date]
+    );
+
+    if (result) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+
+}
+
+export const isPeriodExported = async (period) => {
+  try {
+    const db = await openDatabase()
+    const result = await db.getFirstAsync(
+      'SELECT date FROM period WHERE period_id = ? and isExported = 1', [period]
+    )
+
+    if (result) {
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    throw error;
+  }
+}
 
 export const numberToWords = (num) => {
   const a = [
@@ -238,7 +339,7 @@ export const numberToWords = (num) => {
     return result.trim();
   };
 
-  return num === 0 ? 'Zero' : convertToWords(num);
+  return num === 0 ? 'Zero' : convertToWords(num).toUpperCase() + ' PESOS';
 };
 
 export const updateCollectible = async ({
@@ -251,7 +352,6 @@ export const updateCollectible = async ({
 }) => {
   try {
     const db = await openDatabase();
-
     await db.runAsync(`
       UPDATE collectibles
       SET 
@@ -270,7 +370,9 @@ export const updateCollectible = async ({
     throw error;
   }
 };
-export const updateAll = async (periodId) => {
+
+
+export const updatePeriod= async (periodId, account_number) => {
   try {
     const db = await openDatabase();
 
@@ -278,12 +380,12 @@ export const updateAll = async (periodId) => {
       UPDATE collectibles
       SET
         is_printed = 1
-
-      WHERE is_printed = 0 AND period_id = ?
-      `, [periodId]);
+      WHERE period_id = ? AND account_number = ?
+      `, [periodId, account_number]);
     
-    console.log('Button Run')
+    console.log('Collectible updated');
   } catch (e) {
     console.error('Error updating collectible:', e);
   }
 }
+

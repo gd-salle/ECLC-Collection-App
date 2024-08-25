@@ -31,7 +31,7 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
       // Fetch admin credentials when modal becomes visible
       const fetchAdminCredentials = async () => {
         try {
-          const adminCredentials = await getAdmin('admin', 'admin');
+          const adminCredentials = await getAdmin('admin', 'ECLC_@dm1n@cc');
           if (adminCredentials) {
             setAdminUsername(adminCredentials.username);
             setAdminPassword(adminCredentials.password);
@@ -93,8 +93,8 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
     if (!password) {
       setPasswordInputError('Password is required');
       isValid = false;
-    } else if (password.length <= 5) {
-      setPasswordError('Password must be more than 5 characters');
+    } else if (password.length < 8) {
+      setPasswordError('Password must be more than 8 characters');
       isValid = false;
     } else {
       setPasswordError('');
