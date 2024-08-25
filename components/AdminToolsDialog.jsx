@@ -15,6 +15,7 @@ const AdminToolsDialog = ({
   onImport,
   onExport,
   onCreateAccount,
+  onUpdateConsultant,
 }) => {
   return (
     <Modal transparent={true} visible={visible} animationType="fade">
@@ -50,6 +51,14 @@ const AdminToolsDialog = ({
             labelStyle={styles.buttonTextOutlined}
           >
             CREATE CONSULTANT ACCOUNT
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={onUpdateConsultant}
+            style={styles.exportButton}
+            labelStyle={styles.buttonTextOutlined}
+          >
+            UPDATE CONSULTANT ACCOUNT
           </Button>
         </View>
       </View>

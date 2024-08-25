@@ -12,12 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { getConsultantNames, getAdminNames } from '../services/UserService';
 
-const AuthDialog = ({ visible, onClose, onConfirm, isConsultantAuth }) => {
+const AuthDialog = ({ visible, onClose, onConfirm, isConsultantAuth, selectedConsultantName }) => {
   const [selectedUser, setSelectedUser] = useState('');
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [users, setUsers] = useState([]);
-
+  // console.log(selectedConsultantName)
   useEffect(() => {
     if (visible) {
       fetchUsers();

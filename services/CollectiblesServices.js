@@ -5,7 +5,7 @@ export const fetchCollectibles = async (period_date) => {
     try {
         const db = await openDatabase();
         const allRows = await db.getAllAsync(
-            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE c.is_printed = 0 AND p.isExported = 0 AND p.date = ?', 
+            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE p.date = ?', 
             [period_date] // Pass period_id as a parameter
         );
 
@@ -370,6 +370,8 @@ export const updateCollectible = async ({
     throw error;
   }
 };
+
+
 export const updatePeriod= async (periodId, account_number) => {
   try {
     const db = await openDatabase();

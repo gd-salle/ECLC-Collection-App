@@ -31,7 +31,8 @@ export const openDatabase = async () => {
         name TEXT NOT NULL,
         admin_passcode TEXT NOT NULL,
         password TEXT NOT NULL,
-        area TEXT NOT NULL
+        area TEXT NOT NULL,
+        status INTEGER NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS period (
