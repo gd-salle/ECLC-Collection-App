@@ -254,11 +254,17 @@ const DataEntry = () => {
         {
           text: 'OK',
           onPress: async () => {
-            try {
-              await printAccountHistory(dataToPrint,item.name)
-            } catch (error) {
-              console.error('Failed to fetch account history:', error);
+            if (bluetoothStatus) {
+              try {
+                await printAccountHistory(dataToPrint,item.name)
+              } catch (error) {
+                console.error('Failed to fetch account history:', error);
+              }
+            } else {
+              Alert.alert('Please connect to Bluetooth Printer', 'No bluetooth printer connected.');
+              setBluetoothConfigVisible(true);  
             }
+            
           },
         },
       ],

@@ -84,6 +84,7 @@ export const insertCollectiblesIntoDatabase = async (entry,selectedDate) => {
 // Function to handle import of CSV file
 export const handleImport = async (selectedCollectionDate) => {
   console.log('Starting handleImport');
+  console.log(selectedCollectionDate)
   
   const result = await DocumentPicker.getDocumentAsync({
     type: ['text/csv', 'application/csv', 'text/comma-separated-values'],
@@ -162,32 +163,34 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
     .split('T')[0];
   console.log('selected:', selectedCollectionDate);
   console.log('current:', currentDate);
-  
-  const result = await isPeriodDateExported(currentDate);
+
+  // Check if the collectibles for the selected date have already been exported
+  const result = await isPeriodDateExported(selectedCollectionDate);
   if (result) {
-    Alert.alert('Import Error', 'The data for today has already been exported, so you can no longer import it.');
+    Alert.alert('Import Error', `The collectibles for ${selectedCollectionDate} have already been exported. You can no longer import for this date.`);
     return false;
   }
 
+  // Check if the CSV is empty or has missing data
   const rows = content.split('\n').map(row => row.trim()).filter(row => row.length > 0);
   if (rows.length < 2) {
-    Alert.alert('Error', 'The CSV file is empty or does not contain enough data.');
+    Alert.alert('Import Error', 'The CSV file is empty or does not contain enough data.');
     return false;
   }
 
   const headers = rows[0].split(',').map(header => header.trim());
 
-  // Verify that the headers contain all required headers
+  // Check for missing headers
   const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
   if (missingHeaders.length > 0) {
-    Alert.alert('Error', `Invalid CSV format. Missing headers: ${missingHeaders.join(', ')}`);
+    Alert.alert('Import Error', `Invalid CSV format. Missing headers: ${missingHeaders.join(', ')}`);
     return false;
   }
 
-  // Check for any extra headers that are not required
+  // Check for extra headers
   const extraHeaders = headers.filter(header => !requiredHeaders.includes(header));
   if (extraHeaders.length > 0) {
-    Alert.alert('Error', `Invalid CSV format. Extra headers found: ${extraHeaders.join(', ')}`);
+    Alert.alert('Import Error', `Invalid CSV format. Extra headers found: ${extraHeaders.join(', ')}`);
     return false;
   }
 
@@ -212,7 +215,7 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
     return entry;
   }).filter(entry => entry !== null); // Remove null entries
 
-  // Check for any missing data in required fields
+  // Check for missing data in required fields
   const incompleteRows = data.reduce((acc, entry, index) => {
     const missingData = requiredHeaders.filter(header => !entry[header]);
     if (missingData.length > 0) {
@@ -222,7 +225,29 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
   }, []);
 
   if (incompleteRows.length > 0) {
-    Alert.alert('Error', `Incomplete data found:\n${incompleteRows.join('\n')}`);
+    Alert.alert('Import Error', `Incomplete data found:\n${incompleteRows.join('\n')}`);
+    return false;
+  }
+
+  // Additional validation for numeric fields
+  const invalidNumericRows = data.reduce((acc, entry, index) => {
+    const remainingBalance = entry['remaining_balance'];
+    const dailyDue = entry['daily_due'];
+    const rowNumber = index + 2; // Adjust for header row
+
+    if (isNaN(parseFloat(remainingBalance)) || !isFinite(remainingBalance)) {
+      acc.push(`Row ${rowNumber}: Invalid remaining_balance value '${remainingBalance}'`);
+    }
+
+    if (isNaN(parseFloat(dailyDue)) || !isFinite(dailyDue)) {
+      acc.push(`Row ${rowNumber}: Invalid daily_due value '${dailyDue}'`);
+    }
+
+    return acc;
+  }, []);
+
+  if (invalidNumericRows.length > 0) {
+    Alert.alert('Import Error', `Invalid numeric values found:\n${invalidNumericRows.join('\n')}`);
     return false;
   }
 
@@ -232,8 +257,10 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
       return false; // Stop further processing if there's an error
     }
   }
+
   return true;
 };
+
 
 
 

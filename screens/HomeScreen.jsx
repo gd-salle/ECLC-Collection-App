@@ -15,7 +15,7 @@ import { handleImport } from '../services/FileService';
 // import { getConsultantInfo } from '../services/UserService';
 import { fetchLatestPeriodDate, fetchPeriodIdByDate, fetchLatestPeriodID, fetchAllPeriods } from '../services/CollectiblesServices';
 import { exportCollectibles } from '../services/FileService';
-import { isBluetoothEnabled } from '../services/BluetoothService';
+import { isBluetoothEnabled, getConnectionStatus} from '../services/BluetoothService';
 import { getAdmin, getConsultant,fetchAllActiveConsultant } from '../services/UserService';
 
 const HomeScreen = () => {
@@ -47,16 +47,20 @@ const HomeScreen = () => {
 
     const checkBluetooth = async () => {
       const bluetoothEnabled = await isBluetoothEnabled();
+      const status = getConnectionStatus();
       if (!bluetoothEnabled) {
         Alert.alert(
           'Bluetooth Required',
           'Please enable Bluetooth to use this app.',
           [{ text: 'OK' }]
         );
-      } else {
+      }
+
+      if (!status) {
         setBluetoothConfigVisible(true);
       }
     };
+
 
     const fetchConsultants = async () => {
     try {
@@ -289,7 +293,6 @@ const HomeScreen = () => {
   };
 
   const handleCollectionDateDialogConfirm = async (date) => {
-    console.log('asfgjabfvaj',date);
     setCollectionDate(date);
     setIsLoading(true);
     setAdminToolsVisible(false);
