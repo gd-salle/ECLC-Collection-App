@@ -5,7 +5,7 @@ export const fetchCollectibles = async (period_date) => {
     try {
         const db = await openDatabase();
         const allRows = await db.getAllAsync(
-            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE p.date = ?', 
+            'SELECT * FROM collectibles c JOIN period p ON c.period_id = p.period_id WHERE p.date = ? AND c.remaining_balance > 0', 
             [period_date] // Pass period_id as a parameter
         );
 

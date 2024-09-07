@@ -208,9 +208,9 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
     entry['cheque_number'] = '';
 
     // Add a check to ensure that entries with remaining_balance of 0 are excluded
-    if (parseFloat(entry['remaining_balance']) === 0) {
-      return null; // Skip this entry
-    }
+    // if (parseFloat(entry['remaining_balance']) === 0) {
+    //   return null; // Skip this entry
+    // }
 
     return entry;
   }).filter(entry => entry !== null); // Remove null entries
