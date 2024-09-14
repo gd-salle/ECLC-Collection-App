@@ -5,6 +5,7 @@ import { Alert, Platform} from 'react-native';
 import { storePeriodDate, fetchPeriodDateById, fetchPeriodIdByDateOfNotExported, fetchAndSetPeriodDate, isPeriodDateExported, fetchPeriodIdOfNotExported } from './CollectiblesServices';
 import { getConsultantInfo } from './UserService';
 import * as Sharing from 'expo-sharing';
+import * as CryptoJS from 'crypto-js';
 
 // Function to check if an account number already exists in the list
 const isDuplicateCollectible = (accountNumbers, account_number) => {
@@ -286,15 +287,12 @@ export const exportCollectibles = async (periodId) => {
       Alert.alert('Error', 'Consultant information not found');
       return 'error';
     }
-    const periodDate = await fetchPeriodDateById(periodId)
+    const periodDate = await fetchPeriodDateById(periodId);
 
     const newPeriodId = await fetchPeriodIdOfNotExported();
     const newPeriodDate = await fetchPeriodDateById(newPeriodId);
     const period = await getPeriodData(db, periodDate);
 
-
-    // const allPeriod = await fetchAllPeriodsByDate(periodDate);
-    
     if (!period) {
       Alert.alert('Export Error', 'No Period Found.');
       return 'no_period';
@@ -321,32 +319,30 @@ export const exportCollectibles = async (periodId) => {
       }
     }
 
-    
     const collectibles = await getCollectiblesData(db, newPeriodId);
     const unprintedCheck = await checkUnprintedCollectibles(db, newPeriodId);
     if (unprintedCheck === 'canceled') {
       return 'canceled';
     }
-    
 
     const { name: consultantName } = consultantInfo;
     const formattedDate = getFormattedDate();
 
     const csvContent = convertToCSV(collectibles);
 
+    // Encrypt the CSV content with the generated password
+    const encryptedCSVContent = encryptCSV(csvContent);
+
     const fileName = `${consultantName}_${formattedDate}.csv`.replace(/[/]/g, '-');
     const fileUri = FileSystem.documentDirectory + fileName;
 
-    const saveStatus = await saveCSVToFile(fileUri, csvContent, fileName);
+    const saveStatus = await saveCSVToFile(fileUri, encryptedCSVContent, fileName);
 
     if (saveStatus === 'canceled') {
       return 'canceled';
     }
 
-    
     await markPeriodAsExported(db, newPeriodId);
-    // await deleteCollectiblesData(db, periodId);
-    // await deletePeriodData(db, periodId);
     return 'success';
   } catch (error) {
     console.error('Error exporting collectibles:', error);
@@ -410,6 +406,21 @@ const convertToCSV = (collectibles) => {
     `${c.account_number},${c.name},${c.remaining_balance},${c.payment_type},${c.cheque_number},${c.amount_paid},${c.daily_due},${c.creditors_name}`
   );
   return csvHeaders + csvRows.join('\n');
+};
+
+
+// Function to generate the password based on the current date
+const generatePassword = () => {
+  const currentDate = new Date();
+  const formattedDate = currentDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  return `ECLC_${formattedDate}`;
+};
+
+// Function to encrypt the CSV content using the generated password
+const encryptCSV = (csvContent) => {
+  const password = generatePassword();
+  const encryptedContent = CryptoJS.AES.encrypt(csvContent, password).toString();
+  return encryptedContent;
 };
 
 

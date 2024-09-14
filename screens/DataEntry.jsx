@@ -118,6 +118,12 @@ const DataEntry = () => {
   };
 
   const handleOpenDialog = () => {
+    // Check if amountPaid is zero
+    if (parseFloat(amountPaid) === 0) {
+      Alert.alert('Error', 'Amount Paid cannot be zero.');
+      return; // Stop further execution
+    }
+
     if (validateForm()) {
       setConfirmData({
         account_number: item.account_number,
@@ -132,6 +138,7 @@ const DataEntry = () => {
       Alert.alert('Validation Error', 'Please fill in all required fields.');
     }
   };
+
 
   const handleConfirm = () => {
     setConfirmationDialogVisible(false);

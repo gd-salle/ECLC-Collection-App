@@ -88,8 +88,8 @@ android {
         applicationId 'com.eclc.collectionprinter'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 7
-        versionName "1.0.47"
+        versionCode 8
+        versionName "1.0.48"
     }
     signingConfigs {
         debug {
