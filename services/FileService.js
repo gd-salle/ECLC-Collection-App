@@ -5,8 +5,8 @@ import { Alert, Platform} from 'react-native';
 import { storePeriodDate, fetchPeriodDateById, fetchPeriodIdByDateOfNotExported, fetchAndSetPeriodDate, isPeriodDateExported, fetchPeriodIdOfNotExported } from './CollectiblesServices';
 import { getConsultantInfo } from './UserService';
 import * as Sharing from 'expo-sharing';
-import * as CryptoJS from 'crypto-js';
-
+import { zipWithPassword, subscribe } from 'react-native-zip-archive';
+let csvFileUri = '';
 // Function to check if an account number already exists in the list
 const isDuplicateCollectible = (accountNumbers, account_number) => {
   console.log('Checking for duplicate:', account_number);
@@ -299,7 +299,7 @@ export const exportCollectibles = async (periodId) => {
     }
 
     if (!newPeriodId) {
-      Alert.alert('Export Error', 'All period has already been exported or no period was found.');
+      Alert.alert('Export Error', 'All periods have already been exported or no period was found.');
       return 'already_exported';
     } else {
       const userConfirmed = await new Promise((resolve) => {
@@ -326,24 +326,120 @@ export const exportCollectibles = async (periodId) => {
     }
 
     const { name: consultantName } = consultantInfo;
+
+    // Get the current date and format it
+    const offset = 8 * 60; // GMT+8 offset in minutes
+    const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+      .toISOString()
+      .split('T')[0]; // Produces "YYYY-MM-DD"
+    const password = `ECLC_${currentDate}`;
+
     const formattedDate = getFormattedDate();
-
     const csvContent = convertToCSV(collectibles);
-
-    // Encrypt the CSV content with the generated password
-    const encryptedCSVContent = encryptCSV(csvContent);
 
     const fileName = `${consultantName}_${formattedDate}.csv`.replace(/[/]/g, '-');
     const fileUri = FileSystem.documentDirectory + fileName;
 
-    const saveStatus = await saveCSVToFile(fileUri, encryptedCSVContent, fileName);
-
+    // Step 1: Save CSV file
+    console.log('Saving CSV file...');
+    const saveStatus = await saveCSVToFile(fileUri, csvContent, fileName);
     if (saveStatus === 'canceled') {
       return 'canceled';
     }
 
-    await markPeriodAsExported(db, newPeriodId);
-    return 'success';
+    // Step 2: Halt and wait for the user to confirm folder selection via an alert
+    await new Promise((resolve) => {
+      Alert.alert(
+        'Notice',
+        'Please choose the folder to save the zip file.',
+        [{ text: 'OK', onPress: () => resolve() }],
+        { cancelable: false }
+      );
+    });
+
+    // Step 3: Request directory access from the user
+    let directoryUri;
+    if (Platform.OS === 'android') {
+      try {
+        console.log('Requesting directory access...');
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+        if (!permissions.granted) {
+          console.log('Directory permission denied');
+          Alert.alert('Permission Denied', 'You need to grant access to save the file.');
+          return 'permission_denied';
+        }
+
+        directoryUri = permissions.directoryUri;
+        console.log('Directory selected:', directoryUri);
+      } catch (error) {
+        console.error('Error requesting directory permissions:', error);
+        return 'error';
+      }
+    } else {
+      Alert.alert('Error', 'Directory selection is only supported on Android with Storage Access Framework.');
+      return 'unsupported_platform';
+    }
+
+    // Step 4: Zip the CSV file (add password encryption)
+    const zipFileName = `${consultantName}_${formattedDate}.zip`;
+    const zipFileUri = FileSystem.documentDirectory + zipFileName;
+
+    console.log(`Zipping file ${fileName}...`);
+
+    try {
+      // Modify here to include password (if a new library is used that supports password zipping)
+      await zipWithPassword(fileUri, zipFileUri, password, 'AES-256');
+      console.log(`Successfully zipped CSV file to ${zipFileUri}`);
+
+      // Inform the user where the zip file will be saved
+      Alert.alert(
+        'Notice',
+        `The zip file will be saved as ${zipFileName} in the selected folder with password "${password}".`,
+        [{ text: 'OK' }],
+        { cancelable: false }
+      );
+
+      // Step 5: Save the zipped file to the chosen directory
+      const base64 = await FileSystem.readAsStringAsync(zipFileUri, { encoding: FileSystem.EncodingType.Base64 });
+      console.log('Saving zipped file to user-chosen directory...');
+
+      await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, zipFileName, 'application/zip')
+        .then(async (uri) => {
+          console.log('Writing zipped file...');
+          await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+          console.log('Zipped file saved successfully:', uri);
+        })
+        .catch((error) => {
+          console.error('Error saving the zipped file to the directory:', error);
+          throw new Error('Failed to save zipped file');
+        });
+
+      // Step 6: Delete the CSV file from the original directory
+      console.log('Deleting CSV file from the original directory...');
+      console.log('File URI:', fileUri);
+      await FileSystem.deleteAsync(csvFileUri);
+      console.log('CSV file deleted successfully.');
+
+      // Step 7: Mark period as exported
+      await markPeriodAsExported(db, newPeriodId);
+      console.log('Marked period as exported.');
+      return 'success';
+    } catch (zipError) {
+      console.error('Error zipping or saving the CSV file:', zipError);
+
+      // Delete the CSV file if zipping or saving fails
+      try {
+        console.log('Deleting CSV file due to zip failure...');
+        await FileSystem.deleteAsync(fileUri);
+        console.log('CSV file deleted successfully.');
+      } catch (deleteError) {
+        console.error('Error deleting CSV file after failure:', deleteError);
+      }
+
+      Alert.alert('Error', 'Failed to zip or save the CSV file.');
+      return 'error';
+    }
   } catch (error) {
     console.error('Error exporting collectibles:', error);
     throw error;
@@ -409,25 +505,11 @@ const convertToCSV = (collectibles) => {
 };
 
 
-// Function to generate the password based on the current date
-const generatePassword = () => {
-  const currentDate = new Date();
-  const formattedDate = currentDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-  return `ECLC_${formattedDate}`;
-};
-
-// Function to encrypt the CSV content using the generated password
-const encryptCSV = (csvContent) => {
-  const password = generatePassword();
-  const encryptedContent = CryptoJS.AES.encrypt(csvContent, password).toString();
-  return encryptedContent;
-};
-
-
 const saveCSVToFile = async (fileUri, csvContent, fileName) => {
   try {
     await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
     const saveStatus = await save(fileUri, fileName, 'text/csv');
+    console.log('savestatus:', fileUri)
     return saveStatus;
   } catch (error) {
     console.error('Error saving CSV to file:', error);
@@ -458,7 +540,10 @@ const save = async (uri, filename, mimetype) => {
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, filename, mimetype)
         .then(async (uri) => {
+          console.log('Directory:', permissions.directoryUri);
           await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+          console.log('Directory URI:', uri);
+          csvFileUri = uri;
         })
         .catch(e => {
           console.log(e);
