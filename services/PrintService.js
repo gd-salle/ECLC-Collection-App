@@ -1,5 +1,6 @@
 import { BluetoothEscposPrinter } from 'react-native-bluetooth-escpos-printer';
 import { logo } from '../assets/printLogo'
+import { fetchOfficeAddress } from './OfficeAddress';
 
 
 export const printReceipt = async (data) => {
@@ -22,14 +23,18 @@ export const printReceipt = async (data) => {
     const formattedBalance = new Intl.NumberFormat("en-US", options).format(newBalance);
     const formattedAmountPaid = new Intl.NumberFormat("en-US", options).format(amount);
 
+
     try {
+        const addressData = await fetchOfficeAddress();
+        const address = addressData.name || 'Address Not Available'; // Default if no address is found
         const printerWidth = 384; // This can vary slightly depending on the specific printer
         const imageWidth = 150;   // The width you are setting for the image
         const leftOffset = (printerWidth - imageWidth) / 2; // Calculate center position
 
         // Print the image with manual centering
         await BluetoothEscposPrinter.printPic(logo, { width: imageWidth, left: leftOffset });
-
+        await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
+        await BluetoothEscposPrinter.printText(`${address}\n`, {});
         // Print text content
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
         await BluetoothEscposPrinter.printText('EXTRA CASH\n', {});
@@ -99,12 +104,15 @@ export const printReceipt = async (data) => {
 
 export const printAccountHistory = async (data,name) => {
     try {
+        const addressData = await fetchOfficeAddress();
+        const address = addressData.name || 'Address Not Available'; // Default if no address is found
         const printerWidth = 384; // This can vary slightly depending on the specific printer
         const imageWidth = 150;   // The width you are setting for the image
         const leftOffset = (printerWidth - imageWidth) / 2; // Calculate center position
 
         // Print the image with manual centering
         await BluetoothEscposPrinter.printPic(logo, { width: imageWidth, left: leftOffset });
+        await BluetoothEscposPrinter.printText(`${address}`, {});
 
         // Print text content
         await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);

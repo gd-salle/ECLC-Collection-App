@@ -8,6 +8,7 @@ import AuthDialog from '../components/AutheticationDialog';
 import AdminToolsDialog from '../components/AdminToolsDialog';
 import AccountCreationDialog from '../components/AccountCreationDialog';
 import UpdateConsultantDialog from '../components/UpdateConsultantDialog';
+import OnSetupOfficeAddress from '../components/OfficeAddressDialog';
 import ExportConfirmationDialog from '../components/ExportConfirmationDialog';
 import CollectionDateDialog from '../components/CollectionDateDialog';
 import BluetoothConfig from '../components/BluetoothConfig';
@@ -30,6 +31,7 @@ const HomeScreen = () => {
   const [isAccountCreationVisible, setAccountCreationVisible] = useState(false);
   const [isUpdateConsultantVisible, setUpdateConsultantVisible] = useState(false);
   const [isCollectionDateDialogVisible, setCollectionDateDialogVisible] = useState(false);
+  const [isSetupOfficeAddressVisible, setSetupOfficeAddressVisible] = useState(false);
   const [pendingAction, setPendingAction] = useState(() => {});
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [refreshFlag, setRefreshFlag] = useState(false);
@@ -309,6 +311,11 @@ const HomeScreen = () => {
     }
   };
 
+  const handleSetupOfficeAddress = () => {
+    setSetupOfficeAddressVisible(true);
+  };
+
+  
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
@@ -396,6 +403,7 @@ const HomeScreen = () => {
         onExport={() => setExportConfirmationVisible(true)}
         onCreateAccount={handleAccountCreation}
         onUpdateConsultant={handleUpdateConsultant}
+        onSetUpOfficeAddress={handleSetupOfficeAddress}
       />
       <AccountCreationDialog
         visible={isAccountCreationVisible}
@@ -418,6 +426,15 @@ const HomeScreen = () => {
         onClose={handleUpdateConsultantClose}
         onConfirm={handleUpdateConsultantConfirm}
         onConfirmStatus={handleUpdateConsultantStatusConfirm}
+      />
+      <OnSetupOfficeAddress
+        visible={isSetupOfficeAddressVisible}
+        onClose={() => setSetupOfficeAddressVisible(false)}
+        onConfirm={(officeAddress) => {
+          // Handle office address confirmation logic here
+          setSetupOfficeAddressVisible(false);
+          // Any additional logic
+        }}
       />
       <BluetoothConfig
         visible={isBluetoothConfigVisible}

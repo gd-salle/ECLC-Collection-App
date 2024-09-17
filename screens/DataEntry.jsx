@@ -9,6 +9,8 @@ import { printReceipt, printAccountHistory } from '../services/PrintService';
 import { getConnectionStatus } from '../services/BluetoothService';
 import BluetoothConfig from '../components/BluetoothConfig';
 import { getConsultantInfo } from '../services/UserService';
+import { fetchOfficeAddress } from '../services/OfficeAddress';
+
 
 const DataEntry = () => {
   const route = useRoute();
@@ -27,6 +29,7 @@ const DataEntry = () => {
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [consultantName, setConsultantName] = useState('');
   const [isExported, setIsExported] = useState(false);
+  const [officeAddress, setOfficeAddress] = useState('');
 
   // Get the current date
   const getCurrentDate = () => {
@@ -52,6 +55,26 @@ const DataEntry = () => {
   // const isChequeNumberDisabled = isPrintDisabled;
 
   // console.log('ChequeDisabled? :', isCheckboxDisabled)
+
+  // Fetch office address
+  useEffect(() => {
+    const fetchAddress = async () => {
+      try {
+        const address = await fetchOfficeAddress();
+        if (address) {
+          setOfficeAddress(address);
+        } else {
+          Alert.alert('No Existing Address', 'No existing office address. Please contact your secretary to set up an office address.');
+        }
+      } catch (error) {
+        console.error('Failed to fetch office address:', error);
+      }
+    };
+
+    fetchAddress();
+  }, []);
+
+
   useEffect(() => {
     const fetchConsultantInfo = async () => {
       try {
@@ -149,28 +172,37 @@ const DataEntry = () => {
 
   const handleWarningConfirm = async () => {
     setWarningDialogVisible(false);
-    // try {
-    //   handlePrintReceipt();
-    //   await updateCollectible(confirmData);
-    //   navigation.navigate('Collectibles', { periodId: item.period_id });
-    // } catch (e) {
-    //   Alert.alert('Error', 'No bluetooth printer connected.');
-    // }
+
+    console.log('TESSSSSSSSST:',officeAddress)
+    if (!officeAddress || !officeAddress.name) {
+      Alert.alert(
+        'No Existing Address',
+        'No existing office address or address is empty. Please contact the Adminstrator to set up an office address.'
+      );
+      return;
+    }
+
+    if (!bluetoothStatus) {
+      Alert.alert('Please connect to Bluetooth Printer', 'No bluetooth printer connected.');
+      setBluetoothConfigVisible(true);
+      return;
+    }
+
     try {
-      if (bluetoothStatus) {
-        navigation.navigate('Collectibles', { periodId: item.period_id });
-        handlePrintReceipt();
-        await updateCollectible(confirmData);
-        console.log(confirmData)
-        Alert.alert('Success', 'Printed successfully.');
-      } else {
-        Alert.alert('Please connect to Bluetooth Printer', 'No bluetooth printer connected.');
-        setBluetoothConfigVisible(true);  
-      }
+      // Attempt to update the collectible
+      await updateCollectible(confirmData);
+
+      // Only print receipt if collectible update succeeds
+      await handlePrintReceipt();
+      navigation.navigate('Collectibles', { periodId: item.period_id });
+      Alert.alert('Success', 'Printed successfully.');
     } catch (error) {
-      Alert.alert('Error', 'No bluetooth printer connected.');
+      // Handle errors from updating collectible
+      Alert.alert('Error', 'Failed to update collectible. Printing canceled.');
+      console.error('Error updating collectible:', error);
     }
   };
+
 
   const handleAmountPaidChange = (value) => {
       const numericValue = parseFloat(value);
