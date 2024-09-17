@@ -141,9 +141,7 @@ export const fetchAllActiveConsultant = async () => {
 export const updateConsultantPassword = async (password, consultant_id) => {
   try {
     const db = await openDatabase()
-    await db.runAsync(`UPDATE consultant SET
-      password = ?,
-      WHERE consultant_id = ?`,[password, consultant_id]);
+    await db.runAsync(`UPDATE consultant SET password = ? WHERE consultant_id = ?`,[password, consultant_id]);
   } catch (error) {
     console.error('Error updating consultant:', error);
     throw error;

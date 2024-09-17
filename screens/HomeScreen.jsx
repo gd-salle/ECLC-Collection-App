@@ -8,6 +8,7 @@ import AuthDialog from '../components/AutheticationDialog';
 import AdminToolsDialog from '../components/AdminToolsDialog';
 import AccountCreationDialog from '../components/AccountCreationDialog';
 import UpdateConsultantDialog from '../components/UpdateConsultantDialog';
+import OnSetupOfficeAddress from '../components/OfficeAddressDialog';
 import ExportConfirmationDialog from '../components/ExportConfirmationDialog';
 import CollectionDateDialog from '../components/CollectionDateDialog';
 import BluetoothConfig from '../components/BluetoothConfig';
@@ -15,7 +16,7 @@ import { handleImport } from '../services/FileService';
 // import { getConsultantInfo } from '../services/UserService';
 import { fetchLatestPeriodDate, fetchPeriodIdByDate, fetchLatestPeriodID, fetchAllPeriods } from '../services/CollectiblesServices';
 import { exportCollectibles } from '../services/FileService';
-import { isBluetoothEnabled } from '../services/BluetoothService';
+import { isBluetoothEnabled, getConnectionStatus} from '../services/BluetoothService';
 import { getAdmin, getConsultant,fetchAllActiveConsultant } from '../services/UserService';
 
 const HomeScreen = () => {
@@ -30,6 +31,7 @@ const HomeScreen = () => {
   const [isAccountCreationVisible, setAccountCreationVisible] = useState(false);
   const [isUpdateConsultantVisible, setUpdateConsultantVisible] = useState(false);
   const [isCollectionDateDialogVisible, setCollectionDateDialogVisible] = useState(false);
+  const [isSetupOfficeAddressVisible, setSetupOfficeAddressVisible] = useState(false);
   const [pendingAction, setPendingAction] = useState(() => {});
   const [isBluetoothConfigVisible, setBluetoothConfigVisible] = useState(false);
   const [refreshFlag, setRefreshFlag] = useState(false);
@@ -47,16 +49,20 @@ const HomeScreen = () => {
 
     const checkBluetooth = async () => {
       const bluetoothEnabled = await isBluetoothEnabled();
+      const status = getConnectionStatus();
       if (!bluetoothEnabled) {
         Alert.alert(
           'Bluetooth Required',
           'Please enable Bluetooth to use this app.',
           [{ text: 'OK' }]
         );
-      } else {
+      }
+
+      if (!status) {
         setBluetoothConfigVisible(true);
       }
     };
+
 
     const fetchConsultants = async () => {
     try {
@@ -289,7 +295,6 @@ const HomeScreen = () => {
   };
 
   const handleCollectionDateDialogConfirm = async (date) => {
-    console.log('asfgjabfvaj',date);
     setCollectionDate(date);
     setIsLoading(true);
     setAdminToolsVisible(false);
@@ -306,6 +311,11 @@ const HomeScreen = () => {
     }
   };
 
+  const handleSetupOfficeAddress = () => {
+    setSetupOfficeAddressVisible(true);
+  };
+
+  
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
@@ -393,6 +403,7 @@ const HomeScreen = () => {
         onExport={() => setExportConfirmationVisible(true)}
         onCreateAccount={handleAccountCreation}
         onUpdateConsultant={handleUpdateConsultant}
+        onSetUpOfficeAddress={handleSetupOfficeAddress}
       />
       <AccountCreationDialog
         visible={isAccountCreationVisible}
@@ -415,6 +426,15 @@ const HomeScreen = () => {
         onClose={handleUpdateConsultantClose}
         onConfirm={handleUpdateConsultantConfirm}
         onConfirmStatus={handleUpdateConsultantStatusConfirm}
+      />
+      <OnSetupOfficeAddress
+        visible={isSetupOfficeAddressVisible}
+        onClose={() => setSetupOfficeAddressVisible(false)}
+        onConfirm={(officeAddress) => {
+          // Handle office address confirmation logic here
+          setSetupOfficeAddressVisible(false);
+          // Any additional logic
+        }}
       />
       <BluetoothConfig
         visible={isBluetoothConfigVisible}

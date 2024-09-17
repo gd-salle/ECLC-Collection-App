@@ -5,10 +5,11 @@ import {
   Text,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import { TextInput, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { addConsultant, getAdmin } from '../services/UserService';
+import { addConsultant, getAdmin, fetchAllConsultant } from '../services/UserService';
 
 const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
   const [consultantName, setConsultantName] = useState('');
@@ -25,6 +26,7 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loading, setLoading] = useState(true); // New loading state
+  const [consultants, setConsultants] = useState([]);
 
   useEffect(() => {
     if (visible) {
@@ -46,7 +48,18 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
         }
       };
 
+      // Fetch all consultants
+      const fetchConsultants = async () => {
+        try {
+          const allConsultants = await fetchAllConsultant();
+          setConsultants(allConsultants);
+        } catch (error) {
+          console.error('Error fetching consultants:', error);
+        }
+      };
+
       fetchAdminCredentials();
+      fetchConsultants();
     }
   }, [visible]);
 
@@ -110,19 +123,41 @@ const AccountCreationDialog = ({ visible, onClose, onConfirm }) => {
       isValid = false;
     }
 
+    // Check for duplicate consultant (case-insensitive)
     if (isValid) {
-      try {
-        if (adminPassword === admin_passcode) {
-          // Admin passcode is valid, proceed with adding the consultant
-          await addConsultant(consultantName, admin_passcode, password, area);
-          onConfirm(consultantName, admin_passcode, password, area);
-          onClose();
-        } else {
-          // Admin passcode is invalid
-          setAdminPasscodeError('Invalid admin passcode');
+      const lowercasedConsultantName = consultantName.toLowerCase();
+      const lowercasedArea = area.toLowerCase();
+
+      const isDuplicate = consultants.some(
+        (consultant) =>
+          (consultant.name.toLowerCase() === lowercasedConsultantName &&
+           consultant.area.toLowerCase() === lowercasedArea)
+      );
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Consultant',
+          'A consultant with this name and area already exists.',
+          [{ text: 'OK', onPress: () => setConsultantNameError('') }]
+        );
+        return;
+      }
+
+      if (isValid) {
+        try {
+          if (adminPassword === admin_passcode) {
+            // Admin passcode is valid, proceed with adding the consultant
+            await addConsultant(consultantName, admin_passcode, password, area);
+            onConfirm(consultantName, admin_passcode, password, area);
+            Alert.alert('Success', `Consultant ${consultantName} added successfully`);
+            onClose();
+          } else {
+            // Admin passcode is invalid
+            setAdminPasscodeError('Invalid admin passcode');
+          }
+        } catch (error) {
+          console.error('Error adding consultant:', error);
         }
-      } catch (error) {
-        console.error('Error adding consultant:', error);
       }
     }
   };

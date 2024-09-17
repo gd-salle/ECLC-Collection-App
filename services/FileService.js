@@ -5,7 +5,8 @@ import { Alert, Platform} from 'react-native';
 import { storePeriodDate, fetchPeriodDateById, fetchPeriodIdByDateOfNotExported, fetchAndSetPeriodDate, isPeriodDateExported, fetchPeriodIdOfNotExported } from './CollectiblesServices';
 import { getConsultantInfo } from './UserService';
 import * as Sharing from 'expo-sharing';
-
+import { zipWithPassword, subscribe } from 'react-native-zip-archive';
+let csvFileUri = '';
 // Function to check if an account number already exists in the list
 const isDuplicateCollectible = (accountNumbers, account_number) => {
   console.log('Checking for duplicate:', account_number);
@@ -84,6 +85,7 @@ export const insertCollectiblesIntoDatabase = async (entry,selectedDate) => {
 // Function to handle import of CSV file
 export const handleImport = async (selectedCollectionDate) => {
   console.log('Starting handleImport');
+  console.log(selectedCollectionDate)
   
   const result = await DocumentPicker.getDocumentAsync({
     type: ['text/csv', 'application/csv', 'text/comma-separated-values'],
@@ -162,32 +164,34 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
     .split('T')[0];
   console.log('selected:', selectedCollectionDate);
   console.log('current:', currentDate);
-  
-  const result = await isPeriodDateExported(currentDate);
+
+  // Check if the collectibles for the selected date have already been exported
+  const result = await isPeriodDateExported(selectedCollectionDate);
   if (result) {
-    Alert.alert('Import Error', 'The data for today has already been exported, so you can no longer import it.');
+    Alert.alert('Import Error', `The collectibles for ${selectedCollectionDate} have already been exported. You can no longer import for this date.`);
     return false;
   }
 
+  // Check if the CSV is empty or has missing data
   const rows = content.split('\n').map(row => row.trim()).filter(row => row.length > 0);
   if (rows.length < 2) {
-    Alert.alert('Error', 'The CSV file is empty or does not contain enough data.');
+    Alert.alert('Import Error', 'The CSV file is empty or does not contain enough data.');
     return false;
   }
 
   const headers = rows[0].split(',').map(header => header.trim());
 
-  // Verify that the headers contain all required headers
+  // Check for missing headers
   const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
   if (missingHeaders.length > 0) {
-    Alert.alert('Error', `Invalid CSV format. Missing headers: ${missingHeaders.join(', ')}`);
+    Alert.alert('Import Error', `Invalid CSV format. Missing headers: ${missingHeaders.join(', ')}`);
     return false;
   }
 
-  // Check for any extra headers that are not required
+  // Check for extra headers
   const extraHeaders = headers.filter(header => !requiredHeaders.includes(header));
   if (extraHeaders.length > 0) {
-    Alert.alert('Error', `Invalid CSV format. Extra headers found: ${extraHeaders.join(', ')}`);
+    Alert.alert('Import Error', `Invalid CSV format. Extra headers found: ${extraHeaders.join(', ')}`);
     return false;
   }
 
@@ -205,14 +209,14 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
     entry['cheque_number'] = '';
 
     // Add a check to ensure that entries with remaining_balance of 0 are excluded
-    if (parseFloat(entry['remaining_balance']) === 0) {
-      return null; // Skip this entry
-    }
+    // if (parseFloat(entry['remaining_balance']) === 0) {
+    //   return null; // Skip this entry
+    // }
 
     return entry;
   }).filter(entry => entry !== null); // Remove null entries
 
-  // Check for any missing data in required fields
+  // Check for missing data in required fields
   const incompleteRows = data.reduce((acc, entry, index) => {
     const missingData = requiredHeaders.filter(header => !entry[header]);
     if (missingData.length > 0) {
@@ -222,7 +226,29 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
   }, []);
 
   if (incompleteRows.length > 0) {
-    Alert.alert('Error', `Incomplete data found:\n${incompleteRows.join('\n')}`);
+    Alert.alert('Import Error', `Incomplete data found:\n${incompleteRows.join('\n')}`);
+    return false;
+  }
+
+  // Additional validation for numeric fields
+  const invalidNumericRows = data.reduce((acc, entry, index) => {
+    const remainingBalance = entry['remaining_balance'];
+    const dailyDue = entry['daily_due'];
+    const rowNumber = index + 2; // Adjust for header row
+
+    if (isNaN(parseFloat(remainingBalance)) || !isFinite(remainingBalance)) {
+      acc.push(`Row ${rowNumber}: Invalid remaining_balance value '${remainingBalance}'`);
+    }
+
+    if (isNaN(parseFloat(dailyDue)) || !isFinite(dailyDue)) {
+      acc.push(`Row ${rowNumber}: Invalid daily_due value '${dailyDue}'`);
+    }
+
+    return acc;
+  }, []);
+
+  if (invalidNumericRows.length > 0) {
+    Alert.alert('Import Error', `Invalid numeric values found:\n${invalidNumericRows.join('\n')}`);
     return false;
   }
 
@@ -232,8 +258,10 @@ const processCSVContent = async (content, selectedCollectionDate, periodID) => {
       return false; // Stop further processing if there's an error
     }
   }
+
   return true;
 };
+
 
 
 
@@ -259,22 +287,19 @@ export const exportCollectibles = async (periodId) => {
       Alert.alert('Error', 'Consultant information not found');
       return 'error';
     }
-    const periodDate = await fetchPeriodDateById(periodId)
+    const periodDate = await fetchPeriodDateById(periodId);
 
     const newPeriodId = await fetchPeriodIdOfNotExported();
     const newPeriodDate = await fetchPeriodDateById(newPeriodId);
     const period = await getPeriodData(db, periodDate);
 
-
-    // const allPeriod = await fetchAllPeriodsByDate(periodDate);
-    
     if (!period) {
       Alert.alert('Export Error', 'No Period Found.');
       return 'no_period';
     }
 
     if (!newPeriodId) {
-      Alert.alert('Export Error', 'All period has already been exported or no period was found.');
+      Alert.alert('Export Error', 'All periods have already been exported or no period was found.');
       return 'already_exported';
     } else {
       const userConfirmed = await new Promise((resolve) => {
@@ -294,33 +319,127 @@ export const exportCollectibles = async (periodId) => {
       }
     }
 
-    
     const collectibles = await getCollectiblesData(db, newPeriodId);
     const unprintedCheck = await checkUnprintedCollectibles(db, newPeriodId);
     if (unprintedCheck === 'canceled') {
       return 'canceled';
     }
-    
 
     const { name: consultantName } = consultantInfo;
-    const formattedDate = getFormattedDate();
 
+    // Get the current date and format it
+    const offset = 8 * 60; // GMT+8 offset in minutes
+    const currentDate = new Date(new Date().getTime() + offset * 60 * 1000)
+      .toISOString()
+      .split('T')[0]; // Produces "YYYY-MM-DD"
+    const password = `ECLC_${currentDate}`;
+
+    const formattedDate = getFormattedDate();
     const csvContent = convertToCSV(collectibles);
 
     const fileName = `${consultantName}_${formattedDate}.csv`.replace(/[/]/g, '-');
     const fileUri = FileSystem.documentDirectory + fileName;
 
+    // Step 1: Save CSV file
+    console.log('Saving CSV file...');
     const saveStatus = await saveCSVToFile(fileUri, csvContent, fileName);
-
     if (saveStatus === 'canceled') {
       return 'canceled';
     }
 
-    
-    await markPeriodAsExported(db, newPeriodId);
-    // await deleteCollectiblesData(db, periodId);
-    // await deletePeriodData(db, periodId);
-    return 'success';
+    // Step 2: Halt and wait for the user to confirm folder selection via an alert
+    await new Promise((resolve) => {
+      Alert.alert(
+        'Notice',
+        'Please choose the folder to save the zip file.',
+        [{ text: 'OK', onPress: () => resolve() }],
+        { cancelable: false }
+      );
+    });
+
+    // Step 3: Request directory access from the user
+    let directoryUri;
+    if (Platform.OS === 'android') {
+      try {
+        console.log('Requesting directory access...');
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+        if (!permissions.granted) {
+          console.log('Directory permission denied');
+          Alert.alert('Permission Denied', 'You need to grant access to save the file.');
+          return 'permission_denied';
+        }
+
+        directoryUri = permissions.directoryUri;
+        console.log('Directory selected:', directoryUri);
+      } catch (error) {
+        console.error('Error requesting directory permissions:', error);
+        return 'error';
+      }
+    } else {
+      Alert.alert('Error', 'Directory selection is only supported on Android with Storage Access Framework.');
+      return 'unsupported_platform';
+    }
+
+    // Step 4: Zip the CSV file (add password encryption)
+    const zipFileName = `${consultantName}_${formattedDate}.zip`;
+    const zipFileUri = FileSystem.documentDirectory + zipFileName;
+
+    console.log(`Zipping file ${fileName}...`);
+
+    try {
+      // Modify here to include password (if a new library is used that supports password zipping)
+      await zipWithPassword(fileUri, zipFileUri, password, 'AES-256');
+      console.log(`Successfully zipped CSV file to ${zipFileUri}`);
+
+      // Inform the user where the zip file will be saved
+      Alert.alert(
+        'Notice',
+        `The zip file will be saved as ${zipFileName} in the selected folder with password "${password}".`,
+        [{ text: 'OK' }],
+        { cancelable: false }
+      );
+
+      // Step 5: Save the zipped file to the chosen directory
+      const base64 = await FileSystem.readAsStringAsync(zipFileUri, { encoding: FileSystem.EncodingType.Base64 });
+      console.log('Saving zipped file to user-chosen directory...');
+
+      await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, zipFileName, 'application/zip')
+        .then(async (uri) => {
+          console.log('Writing zipped file...');
+          await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+          console.log('Zipped file saved successfully:', uri);
+        })
+        .catch((error) => {
+          console.error('Error saving the zipped file to the directory:', error);
+          throw new Error('Failed to save zipped file');
+        });
+
+      // Step 6: Delete the CSV file from the original directory
+      console.log('Deleting CSV file from the original directory...');
+      console.log('File URI:', fileUri);
+      await FileSystem.deleteAsync(csvFileUri);
+      console.log('CSV file deleted successfully.');
+
+      // Step 7: Mark period as exported
+      await markPeriodAsExported(db, newPeriodId);
+      console.log('Marked period as exported.');
+      return 'success';
+    } catch (zipError) {
+      console.error('Error zipping or saving the CSV file:', zipError);
+
+      // Delete the CSV file if zipping or saving fails
+      try {
+        console.log('Deleting CSV file due to zip failure...');
+        await FileSystem.deleteAsync(fileUri);
+        console.log('CSV file deleted successfully.');
+      } catch (deleteError) {
+        console.error('Error deleting CSV file after failure:', deleteError);
+      }
+
+      Alert.alert('Error', 'Failed to zip or save the CSV file.');
+      return 'error';
+    }
   } catch (error) {
     console.error('Error exporting collectibles:', error);
     throw error;
@@ -390,6 +509,7 @@ const saveCSVToFile = async (fileUri, csvContent, fileName) => {
   try {
     await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
     const saveStatus = await save(fileUri, fileName, 'text/csv');
+    console.log('savestatus:', fileUri)
     return saveStatus;
   } catch (error) {
     console.error('Error saving CSV to file:', error);
@@ -420,7 +540,10 @@ const save = async (uri, filename, mimetype) => {
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, filename, mimetype)
         .then(async (uri) => {
+          console.log('Directory:', permissions.directoryUri);
           await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
+          console.log('Directory URI:', uri);
+          csvFileUri = uri;
         })
         .catch(e => {
           console.log(e);
